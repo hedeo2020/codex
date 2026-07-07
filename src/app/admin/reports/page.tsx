@@ -1,2 +1,42 @@
-import {Sidebar} from "@/components/Sidebar";import {Header} from "@/components/Header";
-export default function Reports(){return <div className="shell"><Sidebar mode="admin" active="Reports"/><main className="main"><Header eyebrow="Analysis, not scoring" title="Reports" subtitle="Operational attendance reports exclude biometric templates and employee rankings."/><div className="grid4">{["Daily attendance","Late arrivals","Missing check-outs","Verification exceptions"].map((x,i)=><div className="stat" key={x}><div className="stathead">{x}</div><div className="statvalue">{[104,7,3,2][i]}</div><button className="btn">Open report</button></div>)}</div><section className="card" style={{marginTop:18}}><h2>Build a report</h2><div className="check-grid"><div className="field"><label>Date range</label><input type="date"/></div><div className="field"><label>Department</label><select><option>All departments</option><option>HR</option><option>IT</option><option>Finance</option></select></div><div className="field"><label>Method</label><select><option>All methods</option><option>Face</option><option>PIN</option><option>Admin assisted</option></select></div><div className="field"><label>Format</label><select><option>CSV</option><option>Excel</option><option>PDF</option></select></div></div><button className="btn primary" style={{marginTop:16}}>Export authorized data</button></section></main></div>}
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { requireAdminUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+export default async function ReportsPage() {
+  const { user } = await requireAdminUser();
+  const [dailyAttendance, pinCount, faceCount, exceptions] = await Promise.all([
+    db.attendanceRecord.count({ where: { eventTime: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } }),
+    db.attendanceRecord.count({ where: { verificationMethod: "PIN" } }),
+    db.attendanceRecord.count({ where: { verificationMethod: "FACE" } }),
+    db.attendanceRecord.count({ where: { verificationStatus: { not: "SUCCESS" } } })
+  ]);
+
+  return (
+    <div className="shell">
+      <Sidebar mode="admin" active="Reports" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.role.name.replaceAll("_", " ")} />
+      <main className="main">
+        <Header eyebrow="Analysis, not scoring" title="Reports" subtitle="Operational attendance reporting without exposing biometric templates." />
+        <div className="grid4">
+          {[
+            ["Events today", dailyAttendance],
+            ["PIN records", pinCount],
+            ["Face records", faceCount],
+            ["Exceptions", exceptions]
+          ].map(([label, value]) => (
+            <div className="stat" key={label}>
+              <div className="stathead">{label}</div>
+              <div className="statvalue">{value}</div>
+            </div>
+          ))}
+        </div>
+        <section className="card" style={{ marginTop: 18 }}>
+          <h2>Report scope</h2>
+          <div className="notice">
+            This build now reports on live attendance and verification metadata. Export automation can be added next, but the data model and server queries are already live.
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

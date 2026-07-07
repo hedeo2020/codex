@@ -1,2 +1,47 @@
-import {Sidebar} from "@/components/Sidebar";import {Header} from "@/components/Header";
-export default function Enrollments(){return <div className="shell"><Sidebar mode="admin" active="Enrollments"/><main className="main"><Header eyebrow="Restricted access" title="Facial enrollment" subtitle="Manage status and consent without exposing or downloading templates."/><div className="grid4"><div className="stat"><div className="stathead">Active</div><div className="statvalue">109</div></div><div className="stat"><div className="stathead">Not enrolled</div><div className="statvalue">14</div></div><div className="stat"><div className="stathead">Pending review</div><div className="statvalue">3</div></div><div className="stat"><div className="stathead">Exceptions today</div><div className="statvalue">2</div></div></div><section className="card" style={{marginTop:18}}><div className="notice">Biometric templates cannot be displayed, exported, or downloaded. Deletion requires a recorded reason and creates an audit event.</div><table style={{marginTop:16}}><thead><tr><th>Employee</th><th>Status</th><th>Consent</th><th>Expires</th><th>Last verified</th><th></th></tr></thead><tbody>{[["Jordan Lee","Pending review","Yes · v2026.1","—","—"],["Alex Rivera","Active","Yes · v2026.1","7 Jul 2027","Today"],["Sam Wong","Not enrolled","No","—","—"]].map(r=><tr key={r[0]}>{r.map((c,i)=><td key={c}>{i===1?<span className={`badge ${c.includes("Pending")?"warn":c.includes("Not")?"gray":""}`}>{c}</span>:c}</td>)}<td><button className="btn">Manage</button></td></tr>)}</tbody></table></section></main></div>}
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { requireAdminUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { formatDate } from "@/lib/format";
+
+export default async function EnrollmentsPage() {
+  const { user } = await requireAdminUser();
+  const profiles = await db.biometricProfile.findMany({
+    include: { user: true },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  return (
+    <div className="shell">
+      <Sidebar mode="admin" active="Enrollments" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.role.name.replaceAll("_", " ")} />
+      <main className="main">
+        <Header eyebrow="Restricted access" title="Facial enrollment" subtitle="Manage status and consent without exposing or downloading templates." />
+        <section className="card">
+          <div className="notice">Templates remain encrypted and non-exportable. This page only exposes enrollment status, consent, expiry, and last verification metadata.</div>
+          <table style={{ marginTop: 16 }}>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Status</th>
+                <th>Consent</th>
+                <th>Expires</th>
+                <th>Last verified</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profiles.map((profile) => (
+                <tr key={profile.id}>
+                  <td>{profile.user.firstName} {profile.user.lastName}</td>
+                  <td><span className={`badge ${profile.enrollmentStatus === "ACTIVE" ? "" : profile.enrollmentStatus === "PENDING" ? "warn" : "gray"}`}>{profile.enrollmentStatus.replaceAll("_", " ")}</span></td>
+                  <td>{profile.consentStatus ? `Yes · ${profile.consentDocumentVersion ?? "current"}` : "No"}</td>
+                  <td>{profile.expiresAt ? formatDate(profile.expiresAt) : "—"}</td>
+                  <td>{profile.lastVerifiedAt ? formatDate(profile.lastVerifiedAt) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  );
+}

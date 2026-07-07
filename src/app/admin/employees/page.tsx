@@ -1,3 +1,48 @@
-import {Sidebar} from "@/components/Sidebar";import {Header} from "@/components/Header";
-const people=[["EMP-1001","Nora Chen","HR","HR Admin","Active","Enrolled"],["EMP-1004","Theo Martin","IT","Employee","Active","Enrolled"],["EMP-1007","Alex Rivera","Design","Employee","Active","Enrolled"],["EMP-1009","Sam Wong","Finance","Employee","Active","Not enrolled"],["EMP-1010","Jordan Lee","Operations","Employee","Active","Review"]];
-export default function Employees(){return <div className="shell"><Sidebar mode="admin" active="Employees"/><main className="main"><Header eyebrow="People" title="Employee directory" subtitle="Manage work profiles separately from biometric templates."/><section className="card"><div className="cardhead"><div className="field"><input placeholder="Search employee, ID, or department…"/></div><button className="btn primary">Add employee</button></div><table><thead><tr><th>ID</th><th>Employee</th><th>Department</th><th>Role</th><th>Account</th><th>Biometrics</th><th></th></tr></thead><tbody>{people.map(r=><tr key={r[0]}>{r.map((c,i)=><td key={c}>{i>3?<span className={`badge ${c==="Review"?"warn":c==="Not enrolled"?"gray":""}`}>{c}</span>:c}</td>)}<td><button className="btn">View</button></td></tr>)}</tbody></table></section></main></div>}
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { requireAdminUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+export default async function AdminEmployeesPage() {
+  const { user } = await requireAdminUser();
+  const employees = await db.user.findMany({
+    where: { deletedAt: null },
+    include: { role: true, department: true, biometricProfile: true },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }]
+  });
+
+  return (
+    <div className="shell">
+      <Sidebar mode="admin" active="Employees" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.role.name.replaceAll("_", " ")} />
+      <main className="main">
+        <Header eyebrow="People directory" title="Employees" subtitle="Live employee roster with role, department, and biometric status." />
+        <section className="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Employee ID</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Biometric</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((employee) => (
+                <tr key={employee.id}>
+                  <td>{employee.firstName} {employee.lastName}</td>
+                  <td>{employee.employeeId}</td>
+                  <td>{employee.role.name.replaceAll("_", " ")}</td>
+                  <td>{employee.department?.name ?? "Unassigned"}</td>
+                  <td><span className="badge">{employee.employmentStatus}</span></td>
+                  <td>{employee.biometricProfile?.enrollmentStatus?.replaceAll("_", " ") ?? "NOT ENROLLED"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  );
+}

@@ -1,12 +1,12 @@
 # Clockwise - Face Attendance Management System
 
-A privacy-first attendance application based on the supplied 17-page specification. It supports employee and administrator workspaces, face verification boundaries, PIN fallback, consent, deletion, attendance corrections, audit logging, reporting, and retention controls.
+A privacy-first attendance application based on the supplied 17-page specification. It now supports live employee and administrator workspaces, real login sessions, server-verified PIN attendance, consent and deletion controls, audit logging, reporting, and production biometric-provider configuration.
 
 ## Important scope and safety boundary
 
 This application verifies a known, consenting employee who has initiated an attendance event. It must never identify unknown people or be used for hiring, firing, ranking, discipline, performance scoring, or automated employment decisions. Facial attendance is optional. PIN and administrator-assisted attendance remain available.
 
-The included `mock` biometric provider is intentionally not a production recognition system. Connect a reviewed liveness/verification provider in a trusted server-side service before real deployment. Do not send stored embeddings to the browser.
+PIN attendance is ready for production use. Face attendance now runs behind a server-side provider contract, but still requires you to connect a reviewed liveness/verification provider before real biometric use. Do not send stored embeddings to the browser or let the browser declare a match result.
 
 ## Local setup
 
@@ -15,7 +15,7 @@ The included `mock` biometric provider is intentionally not a production recogni
 3. Run `npm install`, `npx prisma migrate dev --name init`, and `npm run db:seed`.
 4. Start with `npm run dev` and visit `http://localhost:3000`.
 
-Demo accounts are listed in `prisma/seed.ts`; their development-only password is `ChangeMe!2026`. Change it immediately outside local development.
+Development seed accounts are listed in `prisma/seed.ts`; their development-only password is `ChangeMe!2026` and the development PIN is `246810`. Change both immediately outside local development.
 
 ## Verification before deployment
 

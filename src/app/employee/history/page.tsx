@@ -1,2 +1,47 @@
-import {Sidebar} from "@/components/Sidebar";import {Header} from "@/components/Header";
-export default function History(){return <div className="shell"><Sidebar active="My history"/><main className="main"><Header eyebrow="My records" title="Attendance history" subtitle="Review events and request a correction without changing records directly."/><section className="card"><div className="check-grid"><div className="field"><label>Date range</label><input type="date"/></div><div className="field"><label>Verification method</label><select><option>All methods</option><option>Face</option><option>PIN</option><option>Admin assisted</option></select></div></div><table style={{marginTop:20}}><thead><tr><th>Date</th><th>Event</th><th>Time</th><th>Method</th><th>Status</th><th></th></tr></thead><tbody>{[["7 Jul 2026","Check in","8:52 AM","Face"],["6 Jul 2026","Check out","5:14 PM","PIN"],["6 Jul 2026","Check in","8:58 AM","Face"],["3 Jul 2026","Check out","5:03 PM","Face"]].map(r=><tr key={r.join()}>{r.map(c=><td key={c}>{c}</td>)}<td><span className="badge">Verified</span></td><td><button className="btn">Request correction</button></td></tr>)}</tbody></table></section></main></div>}
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { requireEmployeeUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/format";
+
+export default async function HistoryPage() {
+  const { user } = await requireEmployeeUser();
+  const records = await db.attendanceRecord.findMany({
+    where: { userId: user.id },
+    orderBy: { eventTime: "desc" },
+    take: 100
+  });
+
+  return (
+    <div className="shell">
+      <Sidebar active="My history" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.jobTitle ?? "Employee"} />
+      <main className="main">
+        <Header eyebrow="Attendance history" title="Your attendance records" subtitle="Verified events from the live system." />
+        <section className="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Event</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Timezone</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <tr key={record.id}>
+                  <td>{formatDateTime(record.eventTime)}</td>
+                  <td>{record.attendanceType.replaceAll("_", " ")}</td>
+                  <td>{record.verificationMethod.replaceAll("_", " ")}</td>
+                  <td><span className="badge">{record.verificationStatus.replaceAll("_", " ")}</span></td>
+                  <td>{record.timezone}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  );
+}

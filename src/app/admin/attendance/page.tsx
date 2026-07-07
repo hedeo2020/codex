@@ -1,2 +1,49 @@
-import {Sidebar} from "@/components/Sidebar";import {Header} from "@/components/Header";
-export default function AdminAttendance(){return <div className="shell"><Sidebar mode="admin" active="Attendance"/><main className="main"><Header eyebrow="Records" title="Attendance management" subtitle="Every manual change requires a reason and preserves the original values."/><section className="card"><div className="check-grid"><div className="field"><label>Search</label><input placeholder="Employee or ID"/></div><div className="field"><label>Status</label><select><option>All statuses</option><option>Pending review</option><option>Verified</option></select></div></div><table style={{marginTop:20}}><thead><tr><th>Employee</th><th>Event</th><th>Time</th><th>Method</th><th>Status</th><th></th></tr></thead><tbody>{[["Alex Rivera","Check in","8:52 AM","Face","Verified"],["Priya Nair","Check in","9:17 AM","Manual","Pending review"],["Theo Martin","Check in","8:31 AM","PIN","Verified"]].map(r=><tr key={r.join()}>{r.map((c,i)=><td key={c}>{i===4?<span className={`badge ${c.includes("Pending")?"warn":""}`}>{c}</span>:c}</td>)}<td><button className="btn">Review</button></td></tr>)}</tbody></table></section></main></div>}
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { requireAdminUser } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { formatDateTime } from "@/lib/format";
+
+export default async function AdminAttendancePage() {
+  const { user } = await requireAdminUser();
+  const records = await db.attendanceRecord.findMany({
+    include: { user: true, location: true },
+    orderBy: { eventTime: "desc" },
+    take: 100
+  });
+
+  return (
+    <div className="shell">
+      <Sidebar mode="admin" active="Attendance" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.role.name.replaceAll("_", " ")} />
+      <main className="main">
+        <Header eyebrow="Operations" title="Attendance records" subtitle="Live attendance history across the organization." />
+        <section className="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Employee</th>
+                <th>Event</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <tr key={record.id}>
+                  <td>{formatDateTime(record.eventTime)}</td>
+                  <td>{record.user.firstName} {record.user.lastName}</td>
+                  <td>{record.attendanceType.replaceAll("_", " ")}</td>
+                  <td>{record.verificationMethod.replaceAll("_", " ")}</td>
+                  <td><span className="badge">{record.verificationStatus.replaceAll("_", " ")}</span></td>
+                  <td>{record.location?.name ?? "Not captured"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  );
+}

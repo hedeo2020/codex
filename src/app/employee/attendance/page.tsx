@@ -1,2 +1,20 @@
-"use client";import {useEffect,useRef,useState} from "react";import {Sidebar} from "@/components/Sidebar";import {Header} from "@/components/Header";
-export default function Attendance(){const video=useRef<HTMLVideoElement>(null);const[status,setStatus]=useState("Camera is off");useEffect(()=>()=>{const s=video.current?.srcObject as MediaStream|null;s?.getTracks().forEach(t=>t.stop())},[]);async function start(){try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});if(video.current){video.current.srcObject=s;await video.current.play()}setStatus("Ready — keep one face inside the guide")}catch{setStatus("Camera unavailable. Use PIN or ask an administrator for help.")}}return <div className="shell"><Sidebar active="Record attendance"/><main className="main"><Header eyebrow="Attendance" title="Record your workday" subtitle="Choose the method that works for you."/><div className="layout2"><section className="card"><div className="cardhead"><div><h2>Facial verification</h2><span className="muted">A live check only — not identification</span></div><span className="badge gray">Optional</span></div><div className="camera"><video ref={video} playsInline muted style={{position:"absolute",width:"100%",height:"100%",objectFit:"cover"}}/><div className="face-guide" style={{position:"relative"}}/></div><p className="muted" aria-live="polite">{status}</p><div className="notice">By continuing, you confirm this live capture may be compared with your encrypted template. The frame is deleted immediately after processing.</div><div className="actions" style={{marginTop:16}}><button className="btn" onClick={start}>Enable camera</button><button className="btn primary" onClick={()=>setStatus("Demo verification recorded at 1:04 PM")}>Verify & record</button></div></section><aside className="card"><h2>Other ways to attend</h2><p className="muted">Facial verification is never required.</p><form className="form" onSubmit={e=>{e.preventDefault();setStatus("PIN attendance recorded")}}><div className="field"><label>Employee ID</label><input defaultValue="EMP-1007"/></div><div className="field"><label>Attendance PIN</label><input type="password" inputMode="numeric" placeholder="••••••"/></div><div className="field"><label>Event</label><select><option>Check in</option><option>Check out</option><option>Break start</option><option>Break end</option></select></div><button className="btn primary">Record with PIN</button></form><p className="fine">Having trouble? An authorized administrator can assist without accessing or downloading your biometric template.</p></aside></div></main></div>}
+import { AttendanceRecorder } from "@/components/AttendanceRecorder";
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { requireEmployeeUser } from "@/lib/auth";
+import { appEnv, biometricProviderReady } from "@/lib/env";
+
+export default async function AttendancePage() {
+  const { user } = await requireEmployeeUser();
+  const name = `${user.firstName} ${user.lastName}`;
+
+  return (
+    <div className="shell">
+      <Sidebar active="Record attendance" userName={name} userSubtitle={user.jobTitle ?? "Employee"} />
+      <main className="main">
+        <Header eyebrow="Attendance" title="Record your workday" subtitle="Use live PIN verification now, or face verification once your provider is connected." />
+        <AttendanceRecorder biometricReady={biometricProviderReady()} biometricProvider={appEnv.biometricProvider} />
+      </main>
+    </div>
+  );
+}
