@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: attendance
+      POSTGRES_USER: attendance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    volumes: [attendance-db:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U attendance"], interval: 5s, timeout: 5s, retries: 10}
+  app:
+    build: .
+    depends_on: {db: {condition: service_healthy}}
+    environment:
+      DATABASE_URL: postgresql://attendance:${POSTGRES_PASSWORD:-local-development-only}@db:5432/attendance?schema=public
+      SESSION_SECRET: ${SESSION_SECRET}
+      BIOMETRIC_ENCRYPTION_KEY: ${BIOMETRIC_ENCRYPTION_KEY}
+      NODE_ENV: production
+    ports: ["3000:3000"]
+volumes: {attendance-db: {}}

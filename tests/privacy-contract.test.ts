@@ -1,0 +1,2 @@
+import {describe,it,expect} from "vitest";import {readFileSync} from "node:fs";import {join} from "node:path";
+describe("privacy API contract",()=>{it("never selects encrypted embedding in employee profile responses",()=>{const source=readFileSync(join(process.cwd(),"src/app/api/employees/me/route.ts"),"utf8");expect(source).not.toContain("encryptedEmbedding")});it("requires a deletion reason",()=>{const source=readFileSync(join(process.cwd(),"src/app/api/employees/me/biometric-profile/route.ts"),"utf8");expect(source).toContain("reason:z.string().min(10)")})});
