@@ -34,8 +34,8 @@ export default async function BiometricsPage() {
           </section>
           <aside className="card">
             <h2>Your controls</h2>
-            <p className="muted">Granting consent moves enrollment into a pending state until your provider completes setup.</p>
-            <BiometricConsentPanel consentStatus={Boolean(profile?.consentStatus)} />
+            <p className="muted">Grant consent, capture a camera frame, and enroll directly into CompreFace when that provider is active.</p>
+            <BiometricConsentPanel consentStatus={Boolean(profile?.consentStatus)} canEnroll={appEnv.biometricProvider === "compreface" && biometricProviderReady()} />
           </aside>
         </div>
       </main>

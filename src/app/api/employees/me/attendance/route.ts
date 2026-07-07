@@ -13,7 +13,8 @@ const input = z.object({
   method: z.enum(["FACE", "PIN"]),
   timezone: z.string().min(1),
   pin: z.string().min(4).max(12).optional(),
-  captureToken: z.string().min(6).optional()
+  captureToken: z.string().min(6).optional(),
+  imageDataUrl: z.string().min(20).optional()
 });
 
 function clientIp(req: NextRequest) {
@@ -77,7 +78,8 @@ export async function POST(req: NextRequest) {
   if (parsed.data.method === VerificationMethod.FACE) {
     const verification = await verifyBiometricAttendance({
       userId: session.userId,
-      captureToken: parsed.data.captureToken
+      captureToken: parsed.data.captureToken,
+      imageDataUrl: parsed.data.imageDataUrl
     });
 
     if (!verification.passed) {

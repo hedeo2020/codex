@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 type Props = {
   biometricReady: boolean;
@@ -8,8 +8,57 @@ type Props = {
 };
 
 export function AttendanceRecorder({ biometricReady, biometricProvider }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState("Choose a method to record attendance.");
   const [loading, setLoading] = useState<"PIN" | "FACE" | null>(null);
+  const [cameraState, setCameraState] = useState<"idle" | "ready" | "error">("idle");
+  const [capturedImage, setCapturedImage] = useState<string>("");
+
+  useEffect(() => {
+    return () => {
+      const stream = videoRef.current?.srcObject as MediaStream | null;
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraState("ready");
+      setStatus("Camera ready. Keep one face inside the frame, then capture.");
+    } catch {
+      setCameraState("error");
+      setStatus("Camera access failed. Confirm HTTPS, browser permission, and camera availability.");
+    }
+  }
+
+  function captureFrame() {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setStatus("The camera is not ready yet.");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setStatus("Unable to capture the camera frame.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setCapturedImage(canvas.toDataURL("image/jpeg", 0.92));
+    setStatus("Frame captured. Submit to verify attendance.");
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>, method: "PIN" | "FACE") {
     event.preventDefault();
@@ -24,7 +73,7 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
         method,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         pin: form.get("pin") ? String(form.get("pin")) : undefined,
-        captureToken: form.get("captureToken") ? String(form.get("captureToken")) : undefined
+        imageDataUrl: method === "FACE" ? capturedImage || undefined : undefined
       })
     });
 
@@ -37,6 +86,7 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     }
 
     setStatus(`Attendance recorded successfully with ${method === "PIN" ? "PIN" : "face verification"}.`);
+    if (method === "FACE") setCapturedImage("");
     event.currentTarget.reset();
   }
 
@@ -46,14 +96,38 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
         <div className="cardhead">
           <div>
             <h2>Face attendance</h2>
-            <span className="muted">Server-side verification only</span>
+            <span className="muted">Use your phone or laptop camera in the browser</span>
           </div>
           <span className={`badge ${biometricReady ? "" : "gray"}`}>{biometricReady ? "Available" : "Unavailable"}</span>
         </div>
         <div className="notice">
           {biometricReady
-            ? `Your ${biometricProvider} provider is connected. The browser never decides whether a face match passed.`
-            : "Face attendance stays off until you connect a production biometric provider and complete enrollment."}
+            ? `Your ${biometricProvider} provider is connected. The browser captures the frame, but the server decides the match.`
+            : "Face attendance needs a server-side biometric provider. Camera capture itself works on phone and laptop browsers over HTTPS."}
+        </div>
+        <div className="camera" style={{ marginTop: 16 }}>
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }}
+          />
+          {capturedImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={capturedImage}
+              alt="Captured face frame"
+              style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : null}
+        </div>
+        <div className="actions" style={{ marginTop: 16 }}>
+          <button className="btn" type="button" onClick={startCamera}>
+            {cameraState === "ready" ? "Camera on" : "Enable camera"}
+          </button>
+          <button className="btn" type="button" onClick={captureFrame} disabled={cameraState !== "ready"}>
+            Capture frame
+          </button>
         </div>
         <form className="form" onSubmit={(event) => submit(event, "FACE")}>
           <div className="field">
@@ -65,19 +139,11 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
               <option value="BREAK_END">Break end</option>
             </select>
           </div>
-          <div className="field">
-            <label htmlFor="captureToken">Provider capture token</label>
-            <input
-              id="captureToken"
-              name="captureToken"
-              placeholder={biometricReady ? "Paste the live capture token" : "Provider not configured"}
-              disabled={!biometricReady}
-            />
-          </div>
-          <button className="btn primary" type="submit" disabled={!biometricReady || loading === "FACE"}>
+          <button className="btn primary" type="submit" disabled={!biometricReady || !capturedImage || loading === "FACE"}>
             {loading === "FACE" ? "Verifying..." : "Verify & record"}
           </button>
         </form>
+        <p className="fine">For phone use, open the site over HTTPS and allow camera access when your browser asks.</p>
       </section>
 
       <aside className="card">

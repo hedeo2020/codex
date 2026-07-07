@@ -1,4 +1,4 @@
-type BiometricProvider = "disabled" | "mock" | "webhook";
+type BiometricProvider = "disabled" | "mock" | "webhook" | "compreface";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -16,8 +16,8 @@ function numberWithDefault(name: string, fallback: number) {
 
 function provider(): BiometricProvider {
   const raw = (process.env.BIOMETRIC_PROVIDER ?? "disabled").trim().toLowerCase();
-  if (raw === "disabled" || raw === "mock" || raw === "webhook") return raw;
-  throw new Error("BIOMETRIC_PROVIDER must be one of disabled, mock, or webhook.");
+  if (raw === "disabled" || raw === "mock" || raw === "webhook" || raw === "compreface") return raw;
+  throw new Error("BIOMETRIC_PROVIDER must be one of disabled, mock, webhook, or compreface.");
 }
 
 export const appEnv = {
@@ -38,6 +38,12 @@ export const appEnv = {
   },
   get biometricWebhookToken() {
     return process.env.BIOMETRIC_WEBHOOK_TOKEN?.trim() ?? "";
+  },
+  get comprefaceBaseUrl() {
+    return process.env.COMPREFACE_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+  },
+  get comprefaceApiKey() {
+    return process.env.COMPREFACE_API_KEY?.trim() ?? "";
   },
   get verificationThreshold() {
     return numberWithDefault("VERIFICATION_THRESHOLD", 0.82);
@@ -62,5 +68,8 @@ export const appEnv = {
 export function biometricProviderReady() {
   if (appEnv.biometricProvider === "disabled") return false;
   if (appEnv.biometricProvider === "mock") return process.env.NODE_ENV !== "production";
-  return Boolean(appEnv.biometricWebhookUrl && appEnv.biometricWebhookToken);
+  if (appEnv.biometricProvider === "webhook") {
+    return Boolean(appEnv.biometricWebhookUrl && appEnv.biometricWebhookToken);
+  }
+  return Boolean(appEnv.comprefaceBaseUrl && appEnv.comprefaceApiKey);
 }
