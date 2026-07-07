@@ -1,7 +1,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS build
@@ -19,6 +19,7 @@ RUN addgroup -S app && adduser -S app -G app
 RUN corepack enable
 COPY --from=build --chown=app:app /app/package.json ./package.json
 COPY --from=build --chown=app:app /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=build --chown=app:app /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/.next ./.next
 COPY --from=build --chown=app:app /app/prisma ./prisma
