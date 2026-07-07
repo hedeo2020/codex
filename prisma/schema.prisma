@@ -163,6 +163,7 @@ model BiometricProfile {
   encryptedEmbedding Bytes? @map("encrypted_embedding")
   encryptionIv Bytes? @map("encryption_iv")
   authTag Bytes? @map("auth_tag")
+  providerSubjectId String? @map("provider_subject_id")
   embeddingVersion String @default("v1") @map("embedding_version")
   enrollmentStatus EnrollmentStatus @default(NOT_ENROLLED) @map("enrollment_status")
   consentStatus Boolean @default(false) @map("consent_status")

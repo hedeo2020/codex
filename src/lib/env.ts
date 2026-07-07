@@ -1,4 +1,4 @@
-type BiometricProvider = "disabled" | "mock" | "webhook" | "compreface";
+type BiometricProvider = "disabled" | "mock" | "webhook" | "compreface" | "azure-face";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -16,8 +16,10 @@ function numberWithDefault(name: string, fallback: number) {
 
 function provider(): BiometricProvider {
   const raw = (process.env.BIOMETRIC_PROVIDER ?? "disabled").trim().toLowerCase();
-  if (raw === "disabled" || raw === "mock" || raw === "webhook" || raw === "compreface") return raw;
-  throw new Error("BIOMETRIC_PROVIDER must be one of disabled, mock, webhook, or compreface.");
+  if (raw === "disabled" || raw === "mock" || raw === "webhook" || raw === "compreface" || raw === "azure-face") {
+    return raw;
+  }
+  throw new Error("BIOMETRIC_PROVIDER must be one of disabled, mock, webhook, compreface, or azure-face.");
 }
 
 export const appEnv = {
@@ -45,6 +47,15 @@ export const appEnv = {
   get comprefaceApiKey() {
     return process.env.COMPREFACE_API_KEY?.trim() ?? "";
   },
+  get azureFaceEndpoint() {
+    return process.env.AZURE_FACE_ENDPOINT?.trim().replace(/\/+$/, "") ?? "";
+  },
+  get azureFaceKey() {
+    return process.env.AZURE_FACE_KEY?.trim() ?? "";
+  },
+  get azureFacePersonGroupId() {
+    return process.env.AZURE_FACE_PERSON_GROUP_ID?.trim() ?? "attendance-employees";
+  },
   get verificationThreshold() {
     return numberWithDefault("VERIFICATION_THRESHOLD", 0.82);
   },
@@ -71,5 +82,8 @@ export function biometricProviderReady() {
   if (appEnv.biometricProvider === "webhook") {
     return Boolean(appEnv.biometricWebhookUrl && appEnv.biometricWebhookToken);
   }
-  return Boolean(appEnv.comprefaceBaseUrl && appEnv.comprefaceApiKey);
+  if (appEnv.biometricProvider === "compreface") {
+    return Boolean(appEnv.comprefaceBaseUrl && appEnv.comprefaceApiKey);
+  }
+  return Boolean(appEnv.azureFaceEndpoint && appEnv.azureFaceKey && appEnv.azureFacePersonGroupId);
 }

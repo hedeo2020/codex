@@ -36,9 +36,12 @@ SESSION_SECRET=replace-with-a-long-random-secret
 BIOMETRIC_ENCRYPTION_KEY=replace-with-a-base64-encoded-32-byte-key
 APP_URL=https://attendance.example.com
 NODE_ENV=production
-BIOMETRIC_PROVIDER=mock
+BIOMETRIC_PROVIDER=azure-face
 COMPREFACE_BASE_URL=
 COMPREFACE_API_KEY=
+AZURE_FACE_ENDPOINT=
+AZURE_FACE_KEY=
+AZURE_FACE_PERSON_GROUP_ID=attendance-employees
 BIOMETRIC_TEMPLATE_RETENTION_DAYS=365
 AUDIT_LOG_RETENTION_DAYS=2555
 ATTENDANCE_RETENTION_DAYS=2555
@@ -85,4 +88,4 @@ On startup, the container runs `prisma db push` and `prisma db seed` before laun
 
 ## Important production note
 
-`BIOMETRIC_PROVIDER=mock` is only suitable for demonstration and internal testing. Before real face-based attendance use, replace it with a reviewed server-side verification provider that includes liveness checks and keeps biometric processing out of the browser.
+`BIOMETRIC_PROVIDER=mock` is only suitable for demonstration and internal testing. On Arm-based servers such as OCI `VM.Standard.A1.Flex`, prefer `BIOMETRIC_PROVIDER=azure-face` instead of self-hosting an x86-only verifier. Keep biometric processing behind HTTPS and review the provider's own retention and compliance settings before production rollout.

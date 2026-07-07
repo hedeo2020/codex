@@ -16,7 +16,7 @@ Attendance POST body for PIN: `{ "type": "CHECK_IN", "method": "PIN", "timezone"
 
 Attendance POST body for face: `{ "type": "CHECK_IN", "method": "FACE", "timezone": "Asia/Singapore", "imageDataUrl": "data:image/jpeg;base64,..." }`.
 
-The server now verifies the PIN hash directly before attendance is recorded. Face verification adapters must return only a pass/fail result plus a restricted audit score; never a stored template or browser-decided match flag.
+The server now verifies the PIN hash directly before attendance is recorded. Face verification adapters must return only a pass/fail result plus a restricted audit score; never a stored template or browser-decided match flag. Direct Azure Face integration stores only the provider person ID in the biometric profile.
 
 Biometric enrollment POST body: `{ "imageDataUrl": "data:image/jpeg;base64,..." }`.
 
