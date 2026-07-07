@@ -82,15 +82,16 @@ async function azureRequest(path: string, init: RequestInit = {}) {
 }
 
 async function azureErrorMessage(response: Response, fallback: string) {
+  const headerCode = response.headers.get("x-ms-error-code");
   try {
     const payload = (await response.json()) as { error?: { code?: string; message?: string } };
-    const code = payload.error?.code ? `${payload.error.code}: ` : "";
+    const code = payload.error?.code ?? headerCode ?? "";
     const message = payload.error?.message ?? "";
-    if (message) return `${fallback} ${code}${message}`.trim();
+    if (message) return `${fallback} HTTP ${response.status}${code ? ` ${code}:` : ""} ${message}`.trim();
   } catch {
     // ignore parse errors and return fallback below
   }
-  return `${fallback} HTTP ${response.status}`;
+  return `${fallback} HTTP ${response.status}${headerCode ? ` ${headerCode}` : ""}`;
 }
 
 async function ensureAzurePersonGroup() {
