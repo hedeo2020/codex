@@ -34,8 +34,11 @@ export default async function BiometricsPage() {
           </section>
           <aside className="card">
             <h2>Your controls</h2>
-            <p className="muted">Grant consent, capture a camera frame, and enroll directly into CompreFace when that provider is active.</p>
-            <BiometricConsentPanel consentStatus={Boolean(profile?.consentStatus)} canEnroll={appEnv.biometricProvider === "compreface" && biometricProviderReady()} />
+            <p className="muted">Grant consent, capture a camera frame, and enroll directly when the active biometric provider supports in-app enrollment.</p>
+            <BiometricConsentPanel
+              consentStatus={Boolean(profile?.consentStatus)}
+              canEnroll={(appEnv.biometricProvider === "compreface" || appEnv.biometricProvider === "azure-face") && biometricProviderReady()}
+            />
           </aside>
         </div>
       </main>
