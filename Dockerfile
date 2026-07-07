@@ -26,4 +26,4 @@ COPY --from=build --chown=app:app /app/prisma ./prisma
 COPY --from=build --chown=app:app /app/public ./public
 USER app
 EXPOSE 3000
-CMD ["sh","-c","pnpm prisma db push && pnpm start --hostname 0.0.0.0 --port ${PORT:-3000}"]
+CMD ["sh","-c","pnpm prisma db push && pnpm db:seed && pnpm start --hostname 0.0.0.0 --port ${PORT:-3000}"]

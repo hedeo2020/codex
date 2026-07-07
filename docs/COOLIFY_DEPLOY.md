@@ -74,11 +74,12 @@ The route returns `200` when the app and database are available.
 
 ## First deployment behavior
 
-On startup, the container runs `prisma db push` before launching the app. This means:
+On startup, the container runs `prisma db push` and `prisma db seed` before launching the app. This means:
 
 - a fresh database will be initialized automatically
+- the initial admin and employee accounts will be created automatically
 - schema updates from this project will be applied on redeploy
-- you do not need to run manual migration commands in Coolify for the first release
+- you do not need to run manual migration or seed commands in Coolify for the first release
 
 ## Important production note
 

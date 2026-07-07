@@ -30,7 +30,7 @@ This project is ready for Docker-based deployment on Coolify behind any HTTPS do
 3. Set `SESSION_SECRET` to a long random string and `BIOMETRIC_ENCRYPTION_KEY` to a base64-encoded 32-byte key.
 4. Set `APP_URL` to your real public domain, for example `https://attendance.yourdomain.com`.
 5. Keep the container port at `3000` and use `/api/health` as the health check path.
-6. Deploy once; the container will create or update the Prisma schema automatically on startup.
+6. Deploy once; the container will create or update the Prisma schema and seed the initial admin and employee accounts automatically on startup.
 
 Detailed steps are in [docs/COOLIFY_DEPLOY.md](./docs/COOLIFY_DEPLOY.md).
 
