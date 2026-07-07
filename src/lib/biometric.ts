@@ -81,6 +81,18 @@ async function azureRequest(path: string, init: RequestInit = {}) {
   });
 }
 
+async function azureErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as { error?: { code?: string; message?: string } };
+    const code = payload.error?.code ? `${payload.error.code}: ` : "";
+    const message = payload.error?.message ?? "";
+    if (message) return `${fallback} ${code}${message}`.trim();
+  } catch {
+    // ignore parse errors and return fallback below
+  }
+  return `${fallback} HTTP ${response.status}`;
+}
+
 async function ensureAzurePersonGroup() {
   const path = `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}`;
   const create = await azureRequest(path, {
@@ -93,7 +105,7 @@ async function ensureAzurePersonGroup() {
   });
 
   if (!create.ok && create.status !== 409) {
-    throw new Error("Azure Face could not create or access the person group.");
+    throw new Error(await azureErrorMessage(create, "Azure Face could not create or access the person group."));
   }
 }
 
@@ -108,7 +120,7 @@ async function detectAzureFaceId(imageDataUrl: string) {
   );
 
   if (!response.ok) {
-    throw new Error("Azure Face could not detect a face from the provided image.");
+    throw new Error(await azureErrorMessage(response, "Azure Face could not detect a face from the provided image."));
   }
 
   const payload = (await response.json()) as Array<{ faceId?: string }>;
@@ -130,7 +142,7 @@ async function createAzurePerson(user: User) {
     }
   );
 
-  if (!response.ok) throw new Error("Azure Face could not create the employee record.");
+  if (!response.ok) throw new Error(await azureErrorMessage(response, "Azure Face could not create the employee record."));
   const payload = (await response.json()) as { personId?: string };
   if (!payload.personId) throw new Error("Azure Face did not return a person ID.");
   return payload.personId;
@@ -146,7 +158,7 @@ async function addAzurePersistedFace(personId: string, imageDataUrl: string) {
     }
   );
 
-  if (!response.ok) throw new Error("Azure Face rejected the enrollment image.");
+  if (!response.ok) throw new Error(await azureErrorMessage(response, "Azure Face rejected the enrollment image."));
   return response.json() as Promise<{ persistedFaceId?: string }>;
 }
 
@@ -155,19 +167,20 @@ async function trainAzureGroup() {
     `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/train`,
     { method: "POST" }
   );
-  if (!train.ok) throw new Error("Azure Face could not start training.");
+  if (!train.ok) throw new Error(await azureErrorMessage(train, "Azure Face could not start training."));
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const statusResponse = await azureRequest(
       `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/training`,
       { method: "GET" }
     );
-    if (!statusResponse.ok) break;
+    if (!statusResponse.ok) throw new Error(await azureErrorMessage(statusResponse, "Azure Face training status could not be read."));
     const payload = (await statusResponse.json()) as { status?: string };
     if (payload.status === "succeeded") return;
     if (payload.status === "failed") throw new Error("Azure Face training failed.");
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }
+  throw new Error("Azure Face training did not finish in time. Please retry enrollment in a moment.");
 }
 
 async function verifyByWebhook(user: UserWithBiometric, input: VerificationInput): Promise<VerificationResult> {
@@ -245,7 +258,7 @@ async function verifyByAzureFace(user: UserWithBiometric, input: VerificationInp
   });
 
   if (!response.ok) {
-    return { passed: false, reason: "Azure Face rejected the verification request." };
+    return { passed: false, reason: await azureErrorMessage(response, "Azure Face rejected the verification request.") };
   }
 
   const payload = (await response.json()) as { isIdentical?: boolean; confidence?: number };
