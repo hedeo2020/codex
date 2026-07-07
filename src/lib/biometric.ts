@@ -94,7 +94,7 @@ async function azureErrorMessage(response: Response, fallback: string) {
 }
 
 async function ensureAzurePersonGroup() {
-  const path = `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}`;
+  const path = `/face/v1.2/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}`;
   const create = await azureRequest(path, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -111,7 +111,7 @@ async function ensureAzurePersonGroup() {
 
 async function detectAzureFaceId(imageDataUrl: string) {
   const response = await azureRequest(
-    "/face/v1.0/detect?returnFaceId=true&recognitionModel=recognition_04&detectionModel=detection_03",
+    "/face/v1.2/detect?returnFaceId=true&recognitionModel=recognition_04&detectionModel=detection_03",
     {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
@@ -131,7 +131,7 @@ async function detectAzureFaceId(imageDataUrl: string) {
 
 async function createAzurePerson(user: User) {
   const response = await azureRequest(
-    `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/persons`,
+    `/face/v1.2/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/persons`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +150,7 @@ async function createAzurePerson(user: User) {
 
 async function addAzurePersistedFace(personId: string, imageDataUrl: string) {
   const response = await azureRequest(
-    `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/persons/${encodeURIComponent(personId)}/persistedFaces?detectionModel=detection_03`,
+    `/face/v1.2/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/persons/${encodeURIComponent(personId)}/persistedFaces?detectionModel=detection_03`,
     {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
@@ -164,14 +164,14 @@ async function addAzurePersistedFace(personId: string, imageDataUrl: string) {
 
 async function trainAzureGroup() {
   const train = await azureRequest(
-    `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/train`,
+    `/face/v1.2/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/train`,
     { method: "POST" }
   );
   if (!train.ok) throw new Error(await azureErrorMessage(train, "Azure Face could not start training."));
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const statusResponse = await azureRequest(
-      `/face/v1.0/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/training`,
+      `/face/v1.2/persongroups/${encodeURIComponent(appEnv.azureFacePersonGroupId)}/training`,
       { method: "GET" }
     );
     if (!statusResponse.ok) throw new Error(await azureErrorMessage(statusResponse, "Azure Face training status could not be read."));
@@ -247,7 +247,7 @@ async function verifyByAzureFace(user: UserWithBiometric, input: VerificationInp
   if (!personId) return { passed: false, reason: "This employee has not completed Azure Face enrollment yet." };
 
   const faceId = await detectAzureFaceId(input.imageDataUrl);
-  const response = await azureRequest("/face/v1.0/verify", {
+  const response = await azureRequest("/face/v1.2/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
