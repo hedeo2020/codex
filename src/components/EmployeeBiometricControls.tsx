@@ -11,7 +11,7 @@ export function EmployeeBiometricControls({ consentStatus, canEnroll }: { consen
       <button className="btn primary" type="button" onClick={() => setOpen(true)}>Open controls</button>
       {open ? (
         <div className="modal-backdrop" onClick={() => setOpen(false)}>
-          <section className="modal-panel modal-wide card glass" onClick={(event) => event.stopPropagation()}>
+          <section className="modal-panel modal-wide biometric-controls-panel card glass" onClick={(event) => event.stopPropagation()}>
             <div className="cardhead">
               <div>
                 <h2>Your controls</h2>
