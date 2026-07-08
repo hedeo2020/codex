@@ -56,7 +56,6 @@ type Draft = {
   locationId: string;
   jobTitle: string;
   preferredAttendanceMethod: "FACE" | "PIN" | "ADMIN_ASSISTED";
-  employmentStatus?: string;
 };
 
 function roleLabel(value: string) {
@@ -86,6 +85,8 @@ export function AdminEmployeeManager({ employees: initialEmployees, roles, depar
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState<"create" | "update" | "delete" | null>(null);
   const [createDraft, setCreateDraft] = useState(() => emptyDraft(roles, departments, shifts, locations));
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const selected = useMemo(
     () => employees.find((employee) => employee.id === selectedId) ?? employees[0],
@@ -118,6 +119,7 @@ export function AdminEmployeeManager({ employees: initialEmployees, roles, depar
     }
     setMessage("Employee created.");
     setCreateDraft(emptyDraft(roles, departments, shifts, locations));
+    setCreateOpen(false);
     await refreshEmployees();
   }
 
@@ -146,7 +148,10 @@ export function AdminEmployeeManager({ employees: initialEmployees, roles, depar
     const payload = await response.json().catch(() => ({}));
     setLoading(null);
     setMessage(response.ok ? "Employee updated." : payload.error ?? "Unable to update employee.");
-    if (response.ok) await refreshEmployees();
+    if (response.ok) {
+      setDetailsOpen(false);
+      await refreshEmployees();
+    }
   }
 
   async function deleteSelected() {
@@ -158,154 +163,178 @@ export function AdminEmployeeManager({ employees: initialEmployees, roles, depar
     const payload = await response.json().catch(() => ({}));
     setLoading(null);
     setMessage(response.ok ? "Employee deleted." : payload.error ?? "Unable to delete employee.");
-    if (response.ok) await refreshEmployees();
+    if (response.ok) {
+      setDetailsOpen(false);
+      await refreshEmployees();
+    }
   }
 
   return (
     <div className="stack-lg">
-      <div className="modern-grid">
-        <section className="card glass">
-          <div className="cardhead">
-            <div>
-              <h2>Team directory</h2>
-              <p className="muted">Open a profile to review full details, recent face captures, and assigned access.</p>
-            </div>
+      <section className="card glass">
+        <div className="cardhead">
+          <div>
+            <h2>Team directory</h2>
+            <p className="muted">Click any employee to open their full details and recent recorded attendance evidence.</p>
+          </div>
+          <div className="actions">
             <span className="badge">{employees.length} active</span>
+            <button className="btn primary" type="button" onClick={() => setCreateOpen(true)}>Create user</button>
           </div>
-          <div className="employee-list">
-            {employees.map((employee) => (
-              <button
-                key={employee.id}
-                type="button"
-                className={`employee-item ${selected?.id === employee.id ? "selected" : ""}`}
-                onClick={() => setSelectedId(employee.id)}
-              >
-                {employee.profilePhotoUrl ? <img src={employee.profilePhotoUrl} alt="" className="employee-thumb" /> : <span className="avatar large">{employee.firstName[0]}{employee.lastName[0]}</span>}
-                <span>
-                  <strong>{employee.firstName} {employee.lastName}</strong>
-                  <small>{employee.employeeId} · {roleLabel(employee.role.name)}</small>
-                </span>
-                <span className="badge gray">{employee.employmentStatus}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        </div>
 
-        <section className="card glass">
-          <div className="cardhead">
-            <div>
-              <h2>Create user, moderator, or admin</h2>
-              <p className="muted">Admins manage workforce settings here. Employees still control their own profile and face enrollment.</p>
-            </div>
-          </div>
-          <form className="form compact-grid" onSubmit={createEmployee}>
-            <input className="input" placeholder="Employee ID" value={createDraft.employeeId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, employeeId: event.target.value }))} />
-            <input className="input" placeholder="First name" value={createDraft.firstName} onChange={(event) => setCreateDraft((draft) => ({ ...draft, firstName: event.target.value }))} />
-            <input className="input" placeholder="Last name" value={createDraft.lastName} onChange={(event) => setCreateDraft((draft) => ({ ...draft, lastName: event.target.value }))} />
-            <input className="input" placeholder="Work email" type="email" value={createDraft.email} onChange={(event) => setCreateDraft((draft) => ({ ...draft, email: event.target.value }))} />
-            <input className="input" placeholder="Temporary password" value={createDraft.password} onChange={(event) => setCreateDraft((draft) => ({ ...draft, password: event.target.value }))} />
-            <input className="input" placeholder="PIN" value={createDraft.pin} onChange={(event) => setCreateDraft((draft) => ({ ...draft, pin: event.target.value }))} />
-            <input className="input" placeholder="Job title" value={createDraft.jobTitle} onChange={(event) => setCreateDraft((draft) => ({ ...draft, jobTitle: event.target.value }))} />
-            <select className="input" value={createDraft.roleId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, roleId: event.target.value }))}>
-              {roles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role.name)}</option>)}
-            </select>
-            <select className="input" value={createDraft.departmentId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, departmentId: event.target.value }))}>
-              {departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-            <select className="input" value={createDraft.shiftId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, shiftId: event.target.value }))}>
-              {shifts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-            <select className="input" value={createDraft.locationId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, locationId: event.target.value }))}>
-              {locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-            <select className="input" value={createDraft.preferredAttendanceMethod} onChange={(event) => setCreateDraft((draft) => ({ ...draft, preferredAttendanceMethod: event.target.value as Draft["preferredAttendanceMethod"] }))}>
-              <option value="PIN">PIN</option>
-              <option value="FACE">Face</option>
-              <option value="ADMIN_ASSISTED">Admin assisted</option>
-            </select>
-            <button className="btn primary" disabled={loading === "create"} type="submit">{loading === "create" ? "Creating..." : "Create account"}</button>
-          </form>
-        </section>
-      </div>
+        <div className="directory-grid">
+          {employees.map((employee) => (
+            <button
+              key={employee.id}
+              type="button"
+              className={`employee-item ${selected?.id === employee.id ? "selected" : ""}`}
+              onClick={() => {
+                setSelectedId(employee.id);
+                setDetailsOpen(true);
+              }}
+            >
+              {employee.profilePhotoUrl ? <img src={employee.profilePhotoUrl} alt="" className="employee-thumb" /> : <span className="avatar large">{employee.firstName[0]}{employee.lastName[0]}</span>}
+              <span>
+                <strong>{employee.firstName} {employee.lastName}</strong>
+                <small>{employee.employeeId} · {roleLabel(employee.role.name)}</small>
+                <small>{employee.department?.name ?? "No department"} · {employee.jobTitle ?? "No title"}</small>
+              </span>
+              <span className="badge gray">{employee.employmentStatus}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
-      {selected ? (
-        <div className="modern-grid">
-          <section className="card glass">
+      {detailsOpen && selected ? (
+        <div className="modal-backdrop" onClick={() => setDetailsOpen(false)}>
+          <section className="modal-panel modal-wide card glass" onClick={(event) => event.stopPropagation()}>
             <div className="cardhead">
               <div>
                 <h2>Full employee details</h2>
-                <p className="muted">Admin-manageable role, department, shift, status, and attendance preferences.</p>
+                <p className="muted">Admin-manageable role, department, shift, status, attendance preferences, and recent records.</p>
               </div>
-              <button className="btn danger" type="button" onClick={deleteSelected} disabled={loading === "delete"}>{loading === "delete" ? "Deleting..." : "Delete user"}</button>
+              <div className="actions">
+                <button className="btn danger" type="button" onClick={deleteSelected} disabled={loading === "delete"}>{loading === "delete" ? "Deleting..." : "Delete user"}</button>
+                <button className="btn" type="button" onClick={() => setDetailsOpen(false)}>Close</button>
+              </div>
             </div>
-            <div className="detail-hero">
-              {selected.profilePhotoUrl ? <img src={selected.profilePhotoUrl} alt="" className="profile-photo" /> : <span className="avatar jumbo">{selected.firstName[0]}{selected.lastName[0]}</span>}
-              <div>
-                <h3>{selected.firstName} {selected.lastName}</h3>
-                <p className="muted">{selected.email}</p>
-                <div className="chip-row">
-                  <span className="badge">{roleLabel(selected.role.name)}</span>
-                  <span className="badge gray">{selected.department?.name ?? "No department"}</span>
-                  <span className="badge gray">{selected.biometricProfile?.enrollmentStatus?.replaceAll("_", " ") ?? "NOT ENROLLED"}</span>
+
+            <div className="modern-grid">
+              <section>
+                <div className="detail-hero">
+                  {selected.profilePhotoUrl ? <img src={selected.profilePhotoUrl} alt="" className="profile-photo" /> : <span className="avatar jumbo">{selected.firstName[0]}{selected.lastName[0]}</span>}
+                  <div>
+                    <h3>{selected.firstName} {selected.lastName}</h3>
+                    <p className="muted">{selected.email}</p>
+                    <div className="chip-row">
+                      <span className="badge">{roleLabel(selected.role.name)}</span>
+                      <span className="badge gray">{selected.department?.name ?? "No department"}</span>
+                      <span className="badge gray">{selected.biometricProfile?.enrollmentStatus?.replaceAll("_", " ") ?? "NOT ENROLLED"}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                <form className="form compact-grid" onSubmit={updateSelected}>
+                  <input className="input" name="firstName" defaultValue={selected.firstName} />
+                  <input className="input" name="lastName" defaultValue={selected.lastName} />
+                  <input className="input" name="email" type="email" defaultValue={selected.email} />
+                  <input className="input" name="jobTitle" defaultValue={selected.jobTitle ?? ""} />
+                  <select className="input" name="roleId" defaultValue={selected.roleId}>
+                    {roles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role.name)}</option>)}
+                  </select>
+                  <select className="input" name="employmentStatus" defaultValue={selected.employmentStatus}>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                  </select>
+                  <select className="input" name="departmentId" defaultValue={selected.departmentId ?? ""}>
+                    <option value="">No department</option>
+                    {departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <select className="input" name="shiftId" defaultValue={selected.shiftId ?? ""}>
+                    <option value="">No shift</option>
+                    {shifts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <select className="input" name="locationId" defaultValue={selected.locationId ?? ""}>
+                    <option value="">No location</option>
+                    {locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                  <select className="input" name="preferredAttendanceMethod" defaultValue={selected.preferredAttendanceMethod}>
+                    <option value="PIN">PIN</option>
+                    <option value="FACE">Face</option>
+                    <option value="ADMIN_ASSISTED">Admin assisted</option>
+                  </select>
+                  <button className="btn primary" disabled={loading === "update"} type="submit">{loading === "update" ? "Saving..." : "Save changes"}</button>
+                </form>
+
+                <div className="feed" style={{ marginTop: 18 }}>
+                  <div className="feedrow"><span className="doticon">L</span><div><strong>{selected.location?.name ?? "No assigned site"}</strong><small>{selected.location?.address ?? "No stored address"}</small></div></div>
+                  <div className="feedrow"><span className="doticon">T</span><div><strong>{selected.location?.timezone ?? "Asia/Manila"}</strong><small>Default operating timezone</small></div></div>
+                  <div className="feedrow"><span className="doticon">M</span><div><strong>{selected.mobile ?? "No personal mobile"}</strong><small>Visible for admin review only</small></div></div>
+                </div>
+              </section>
+
+              <section>
+                <div className="cardhead">
+                  <div>
+                    <h2>Recent recorded attendance</h2>
+                    <p className="muted">Latest attendance images and captured place names.</p>
+                  </div>
+                </div>
+                <div className="photo-grid">
+                  {selected.attendanceRecords.length ? selected.attendanceRecords.map((record) => (
+                    <article className="photo-card" key={record.id}>
+                      {record.captureImageUrl ? <img src={record.captureImageUrl} alt={record.attendanceType} className="record-photo" /> : <div className="photo-placeholder">No image</div>}
+                      <strong>{record.attendanceType.replaceAll("_", " ")}</strong>
+                      <small>{new Date(record.eventTime).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}</small>
+                      <small>{record.captureLocationLabel ?? "Location unavailable"}</small>
+                    </article>
+                  )) : <p className="muted">No attendance images yet for this employee.</p>}
+                </div>
+              </section>
             </div>
-            <form className="form compact-grid" onSubmit={updateSelected}>
-              <input className="input" name="firstName" defaultValue={selected.firstName} />
-              <input className="input" name="lastName" defaultValue={selected.lastName} />
-              <input className="input" name="email" type="email" defaultValue={selected.email} />
-              <input className="input" name="jobTitle" defaultValue={selected.jobTitle ?? ""} />
-              <select className="input" name="roleId" defaultValue={selected.roleId}>
+          </section>
+        </div>
+      ) : null}
+
+      {createOpen ? (
+        <div className="modal-backdrop" onClick={() => setCreateOpen(false)}>
+          <section className="modal-panel card glass" onClick={(event) => event.stopPropagation()}>
+            <div className="cardhead">
+              <div>
+                <h2>Create user, moderator, or admin</h2>
+                <p className="muted">Create workforce accounts while leaving profile edits and face enrollment to employees themselves.</p>
+              </div>
+              <button className="btn" type="button" onClick={() => setCreateOpen(false)}>Close</button>
+            </div>
+            <form className="form compact-grid" onSubmit={createEmployee}>
+              <input className="input" placeholder="Employee ID" value={createDraft.employeeId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, employeeId: event.target.value }))} />
+              <input className="input" placeholder="First name" value={createDraft.firstName} onChange={(event) => setCreateDraft((draft) => ({ ...draft, firstName: event.target.value }))} />
+              <input className="input" placeholder="Last name" value={createDraft.lastName} onChange={(event) => setCreateDraft((draft) => ({ ...draft, lastName: event.target.value }))} />
+              <input className="input" placeholder="Work email" type="email" value={createDraft.email} onChange={(event) => setCreateDraft((draft) => ({ ...draft, email: event.target.value }))} />
+              <input className="input" placeholder="Temporary password" value={createDraft.password} onChange={(event) => setCreateDraft((draft) => ({ ...draft, password: event.target.value }))} />
+              <input className="input" placeholder="PIN" value={createDraft.pin} onChange={(event) => setCreateDraft((draft) => ({ ...draft, pin: event.target.value }))} />
+              <input className="input" placeholder="Job title" value={createDraft.jobTitle} onChange={(event) => setCreateDraft((draft) => ({ ...draft, jobTitle: event.target.value }))} />
+              <select className="input" value={createDraft.roleId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, roleId: event.target.value }))}>
                 {roles.map((role) => <option key={role.id} value={role.id}>{roleLabel(role.name)}</option>)}
               </select>
-              <select className="input" name="employmentStatus" defaultValue={selected.employmentStatus}>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-                <option value="SUSPENDED">SUSPENDED</option>
-              </select>
-              <select className="input" name="departmentId" defaultValue={selected.departmentId ?? ""}>
-                <option value="">No department</option>
+              <select className="input" value={createDraft.departmentId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, departmentId: event.target.value }))}>
                 {departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
-              <select className="input" name="shiftId" defaultValue={selected.shiftId ?? ""}>
-                <option value="">No shift</option>
+              <select className="input" value={createDraft.shiftId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, shiftId: event.target.value }))}>
                 {shifts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
-              <select className="input" name="locationId" defaultValue={selected.locationId ?? ""}>
-                <option value="">No location</option>
+              <select className="input" value={createDraft.locationId} onChange={(event) => setCreateDraft((draft) => ({ ...draft, locationId: event.target.value }))}>
                 {locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
-              <select className="input" name="preferredAttendanceMethod" defaultValue={selected.preferredAttendanceMethod}>
+              <select className="input" value={createDraft.preferredAttendanceMethod} onChange={(event) => setCreateDraft((draft) => ({ ...draft, preferredAttendanceMethod: event.target.value as Draft["preferredAttendanceMethod"] }))}>
                 <option value="PIN">PIN</option>
                 <option value="FACE">Face</option>
                 <option value="ADMIN_ASSISTED">Admin assisted</option>
               </select>
-              <button className="btn primary" disabled={loading === "update"} type="submit">{loading === "update" ? "Saving..." : "Save changes"}</button>
+              <button className="btn primary" disabled={loading === "create"} type="submit">{loading === "create" ? "Creating..." : "Create account"}</button>
             </form>
-            <div className="feed" style={{ marginTop: 18 }}>
-              <div className="feedrow"><span className="doticon">L</span><div><strong>{selected.location?.name ?? "No assigned site"}</strong><small>{selected.location?.address ?? "No stored address"}</small></div></div>
-              <div className="feedrow"><span className="doticon">T</span><div><strong>{selected.location?.timezone ?? "Asia/Manila"}</strong><small>Default operating timezone</small></div></div>
-              <div className="feedrow"><span className="doticon">M</span><div><strong>{selected.mobile ?? "No personal mobile"}</strong><small>Visible for admin review only</small></div></div>
-            </div>
-          </section>
-
-          <section className="card glass">
-            <div className="cardhead">
-              <div>
-                <h2>Recent record captures</h2>
-                <p className="muted">Photos shown here are attendance evidence only. Face enrollment stays employee-controlled.</p>
-              </div>
-            </div>
-            <div className="photo-grid">
-              {selected.attendanceRecords.length ? selected.attendanceRecords.map((record) => (
-                <article className="photo-card" key={record.id}>
-                  {record.captureImageUrl ? <img src={record.captureImageUrl} alt={record.attendanceType} className="record-photo" /> : <div className="photo-placeholder">No image</div>}
-                  <strong>{record.attendanceType.replaceAll("_", " ")}</strong>
-                  <small>{new Date(record.eventTime).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}</small>
-                  <small>{record.captureLocationLabel ?? "Location unavailable"}</small>
-                </article>
-              )) : <p className="muted">No attendance images yet for this employee.</p>}
-            </div>
           </section>
         </div>
       ) : null}

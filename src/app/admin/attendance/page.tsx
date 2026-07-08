@@ -37,7 +37,7 @@ export default async function AdminAttendancePage() {
                   <td>{record.attendanceType.replaceAll("_", " ")}</td>
                   <td>{record.verificationMethod.replaceAll("_", " ")}</td>
                   <td><span className="badge">{record.verificationStatus.replaceAll("_", " ")}</span></td>
-                  <td>{record.location?.name ?? "Not captured"}</td>
+                  <td>{record.captureLocationLabel ?? record.location?.name ?? "Not captured"}</td>
                 </tr>
               ))}
             </tbody>

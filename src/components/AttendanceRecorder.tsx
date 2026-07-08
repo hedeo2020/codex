@@ -41,6 +41,34 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     }
   }
 
+  async function reverseGeocode(latitude: number, longitude: number) {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            Accept: "application/json"
+          }
+        }
+      );
+      if (!response.ok) return null;
+      const payload = await response.json();
+      const address = payload.address ?? {};
+      return (
+        address.road ||
+        address.neighbourhood ||
+        address.suburb ||
+        address.village ||
+        address.town ||
+        address.city ||
+        payload.name ||
+        null
+      ) as string | null;
+    } catch {
+      return null;
+    }
+  }
+
   function fetchLocation() {
     if (!navigator.geolocation) {
       setLocationLabel("Location not supported on this device");
@@ -48,11 +76,12 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const latitude = Number(position.coords.latitude.toFixed(6));
         const longitude = Number(position.coords.longitude.toFixed(6));
         setCoordinates({ latitude, longitude });
-        setLocationLabel(`Lat ${latitude}, Lng ${longitude}`);
+        const placeName = await reverseGeocode(latitude, longitude);
+        setLocationLabel(placeName ?? `Area near ${latitude}, ${longitude}`);
       },
       () => setLocationLabel("Location permission denied"),
       { enableHighAccuracy: true, timeout: 10000 }

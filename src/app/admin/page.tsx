@@ -16,7 +16,7 @@ export default async function AdminDashboard() {
     db.attendanceCorrectionRequest.count({ where: { status: "PENDING" } }),
     db.privacyRequest.count({ where: { status: "PENDING" } }),
     db.attendanceRecord.findMany({
-      include: { user: true },
+      include: { user: true, location: true },
       orderBy: { eventTime: "desc" },
       take: 6
     })
@@ -48,6 +48,7 @@ export default async function AdminDashboard() {
                 <tr>
                   <th>Employee</th>
                   <th>Event</th>
+                  <th>Location</th>
                   <th>Method</th>
                   <th>Status</th>
                   <th>Time</th>
@@ -58,6 +59,7 @@ export default async function AdminDashboard() {
                   <tr key={record.id}>
                     <td>{record.user.firstName} {record.user.lastName}</td>
                     <td>{record.attendanceType.replaceAll("_", " ")}</td>
+                    <td>{record.captureLocationLabel ?? record.location?.name ?? "Not captured"}</td>
                     <td>{record.verificationMethod.replaceAll("_", " ")}</td>
                     <td><span className="badge">{record.verificationStatus.replaceAll("_", " ")}</span></td>
                     <td>{formatDateTime(record.eventTime)}</td>
