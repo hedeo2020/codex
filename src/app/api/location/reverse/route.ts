@@ -43,9 +43,8 @@ export async function GET(req: NextRequest) {
       address.village ||
       address.municipality ||
       "City/Municipality unavailable";
-    const province = address.state || address.province || "Province unavailable";
     const country = address.country || "Country unavailable";
-    const locationLabel = `${barangay},${cityMunicipality},${province},${country}`;
+    const locationLabel = `${barangay},${cityMunicipality},${country}`;
 
     return NextResponse.json({ locationLabel });
   } catch {

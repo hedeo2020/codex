@@ -14,7 +14,11 @@ export default async function BiometricsPage() {
       <Sidebar active="Face & consent" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.jobTitle ?? "Employee"} />
       <main className="main">
         <Header eyebrow="Privacy center" title="Your face, your choice" subtitle="Consent, retention, and deletion controls stay visible to the employee." />
-        <div className="layout2">
+        <div className="stack-lg">
+          <EmployeeBiometricControls
+            consentStatus={Boolean(profile?.consentStatus)}
+            canEnroll={appEnv.biometricProvider === "local-face" && biometricProviderReady()}
+          />
           <section className="card glass">
             <div className="cardhead">
               <div>
@@ -34,14 +38,6 @@ export default async function BiometricsPage() {
               <div className="feedrow"><span className="doticon">E</span><div><strong>Expiry</strong><small>{profile?.expiresAt ? formatDate(profile.expiresAt) : "No expiry set"}</small></div></div>
             </div>
           </section>
-          <aside className="card glass">
-            <h2>Your controls</h2>
-            <p className="muted">Open this only when you want to grant consent, capture a face frame, enroll, or remove your biometric profile.</p>
-            <EmployeeBiometricControls
-              consentStatus={Boolean(profile?.consentStatus)}
-              canEnroll={appEnv.biometricProvider === "local-face" && biometricProviderReady()}
-            />
-          </aside>
         </div>
       </main>
     </div>
