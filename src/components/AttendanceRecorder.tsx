@@ -9,19 +9,31 @@ type Props = {
 
 export function AttendanceRecorder({ biometricReady, biometricProvider }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState("Choose a method to record attendance.");
+  const [toast, setToast] = useState("Preparing camera and location...");
   const [loading, setLoading] = useState<"PIN" | "FACE" | null>(null);
   const [cameraState, setCameraState] = useState<"idle" | "ready" | "error">("idle");
   const [capturedImage, setCapturedImage] = useState<string>("");
-  const [locationLabel, setLocationLabel] = useState("Location pending");
+  const [locationLabel, setLocationLabel] = useState("Current area");
   const [coordinates, setCoordinates] = useState<{ latitude?: number; longitude?: number }>({});
+  const [pinOpen, setPinOpen] = useState(false);
+
+  function showToast(message: string) {
+    setToast(message);
+    window.clearTimeout((showToast as typeof showToast & { timer?: number }).timer);
+    (showToast as typeof showToast & { timer?: number }).timer = window.setTimeout(() => setToast(""), 3000);
+  }
 
   useEffect(() => {
+    void initializeCapture();
     return () => {
       const stream = videoRef.current?.srcObject as MediaStream | null;
       stream?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+
+  async function initializeCapture() {
+    await Promise.allSettled([startCamera(), fetchLocation()]);
+  }
 
   async function startCamera() {
     try {
@@ -34,64 +46,50 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
         await videoRef.current.play();
       }
       setCameraState("ready");
-      setStatus("Camera ready. Keep one face inside the frame, then capture.");
+      showToast("Camera is ready.");
     } catch {
       setCameraState("error");
-      setStatus("Camera access failed. Confirm HTTPS, browser permission, and camera availability.");
+      showToast("Camera access failed. Check browser permission.");
     }
   }
 
   async function reverseGeocode(latitude: number, longitude: number) {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            Accept: "application/json"
-          }
-        }
-      );
-      if (!response.ok) return null;
-      const payload = await response.json();
-      const address = payload.address ?? {};
-      return (
-        address.road ||
-        address.neighbourhood ||
-        address.suburb ||
-        address.village ||
-        address.town ||
-        address.city ||
-        payload.name ||
-        null
-      ) as string | null;
-    } catch {
-      return null;
-    }
+    const response = await fetch(`/api/location/reverse?lat=${latitude}&lon=${longitude}`, { cache: "no-store" });
+    const payload = await response.json().catch(() => ({}));
+    return typeof payload.locationLabel === "string" && payload.locationLabel.trim() ? payload.locationLabel.trim() : "Current area";
   }
 
-  function fetchLocation() {
+  async function fetchLocation() {
     if (!navigator.geolocation) {
-      setLocationLabel("Location not supported on this device");
+      setLocationLabel("Current area");
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const latitude = Number(position.coords.latitude.toFixed(6));
-        const longitude = Number(position.coords.longitude.toFixed(6));
-        setCoordinates({ latitude, longitude });
-        const placeName = await reverseGeocode(latitude, longitude);
-        setLocationLabel(placeName ?? `Area near ${latitude}, ${longitude}`);
-      },
-      () => setLocationLabel("Location permission denied"),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    return new Promise<void>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const latitude = Number(position.coords.latitude.toFixed(6));
+          const longitude = Number(position.coords.longitude.toFixed(6));
+          setCoordinates({ latitude, longitude });
+          const placeName = await reverseGeocode(latitude, longitude).catch(() => "Current area");
+          setLocationLabel(placeName);
+          showToast(`Location ready: ${placeName}`);
+          resolve();
+        },
+        () => {
+          setLocationLabel("Current area");
+          showToast("Location access failed. Attendance will use Current area.");
+          resolve();
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
   }
 
   function captureFrame() {
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) {
-      setStatus("The camera is not ready yet.");
+      showToast("The camera is not ready yet.");
       return;
     }
 
@@ -100,7 +98,7 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     canvas.height = video.videoHeight;
     const context = canvas.getContext("2d");
     if (!context) {
-      setStatus("Unable to capture the camera frame.");
+      showToast("Unable to capture the camera frame.");
       return;
     }
 
@@ -120,7 +118,7 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     context.fillText(locationLabel, canvas.width - 22, canvas.height - 22);
     context.textAlign = "left";
     setCapturedImage(canvas.toDataURL("image/jpeg", 0.92));
-    setStatus("Frame captured. Submit to verify attendance.");
+    showToast("Face frame captured.");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>, method: "PIN" | "FACE") {
@@ -147,31 +145,46 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     setLoading(null);
 
     if (!response.ok) {
-      setStatus(payload.error ?? "Unable to record attendance.");
+      showToast(payload.error ?? "Unable to record attendance.");
       return;
     }
 
-    setStatus(`Attendance recorded successfully with ${method === "PIN" ? "PIN" : "face verification"}.`);
+    showToast(`Attendance recorded with ${method === "PIN" ? "PIN" : "face verification"}.`);
     if (method === "FACE") setCapturedImage("");
+    if (method === "PIN") setPinOpen(false);
     event.currentTarget.reset();
   }
 
   return (
-    <div className="layout2">
-      <section className="card">
+    <>
+      <div className="card glass">
         <div className="cardhead">
           <div>
             <h2>Face attendance</h2>
-            <span className="muted">Use your phone or laptop camera in the browser</span>
+            <span className="muted">Camera and location are enabled automatically for phone and laptop use.</span>
           </div>
-          <span className={`badge ${biometricReady ? "" : "gray"}`}>{biometricReady ? "Available" : "Unavailable"}</span>
+          <div className="actions">
+            <span className={`badge ${biometricReady ? "" : "gray"}`}>{biometricReady ? "Available" : "Unavailable"}</span>
+            <button className="btn" type="button" onClick={() => setPinOpen(true)}>Use PIN instead</button>
+          </div>
         </div>
-        <div className="notice">
-          {biometricReady
-            ? `Your ${biometricProvider} provider is connected. The browser captures the frame, but the server decides the match.`
-            : "Face attendance needs a server-side biometric provider. Camera capture itself works on phone and laptop browsers over HTTPS."}
+
+        <div className="hero-strip" style={{ marginBottom: 16 }}>
+          <div className="metric">
+            <strong>Provider</strong>
+            <div className="muted">{biometricProvider}</div>
+          </div>
+          <div className="metric">
+            <strong>Location</strong>
+            <div className="muted">{locationLabel}</div>
+          </div>
+          <div className="metric">
+            <strong>Timezone</strong>
+            <div className="muted">Asia/Manila</div>
+          </div>
         </div>
-        <div className="camera" style={{ marginTop: 16 }}>
+
+        <div className="camera" style={{ marginTop: 8 }}>
           <video
             ref={videoRef}
             playsInline
@@ -187,18 +200,16 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
             />
           ) : null}
         </div>
+
         <div className="actions" style={{ marginTop: 16 }}>
-          <button className="btn" type="button" onClick={startCamera}>
-            {cameraState === "ready" ? "Camera on" : "Enable camera"}
-          </button>
-          <button className="btn" type="button" onClick={fetchLocation}>
-            Use current location
-          </button>
           <button className="btn" type="button" onClick={captureFrame} disabled={cameraState !== "ready"}>
-            Capture frame
+            Capture face frame
+          </button>
+          <button className="btn" type="button" onClick={() => void fetchLocation()}>
+            Refresh location
           </button>
         </div>
-        <p className="fine">Timezone fixed to Asia/Manila. Current location: {locationLabel}.</p>
+
         <form className="form" onSubmit={(event) => submit(event, "FACE")}>
           <div className="field">
             <label htmlFor="face-type">Event</label>
@@ -213,34 +224,42 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
             {loading === "FACE" ? "Verifying..." : "Verify & record"}
           </button>
         </form>
-        <p className="fine">For phone use, open the site over HTTPS and allow both camera and location access when your browser asks.</p>
-      </section>
+        <p className="fine">The captured image is stamped with the current time and the detected place name before verification.</p>
+      </div>
 
-      <aside className="card">
-        <h2>PIN attendance</h2>
-        <p className="muted">Fully live and ready for production.</p>
-        <form className="form" onSubmit={(event) => submit(event, "PIN")}>
-          <div className="field">
-            <label htmlFor="pin-type">Event</label>
-            <select id="pin-type" name="type" defaultValue="CHECK_IN">
-              <option value="CHECK_IN">Check in</option>
-              <option value="CHECK_OUT">Check out</option>
-              <option value="BREAK_START">Break start</option>
-              <option value="BREAK_END">Break end</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="pin">Attendance PIN</label>
-            <input id="pin" name="pin" type="password" inputMode="numeric" placeholder="••••••" required />
-          </div>
-          <button className="btn primary" type="submit" disabled={loading === "PIN"}>
-            {loading === "PIN" ? "Recording..." : "Record with PIN"}
-          </button>
-        </form>
-        <p className="fine">If face verification is unavailable, employees can still record attendance with PIN or authorized admin assistance.</p>
-      </aside>
+      {pinOpen ? (
+        <div className="modal-backdrop" onClick={() => setPinOpen(false)}>
+          <section className="modal-panel card glass" onClick={(event) => event.stopPropagation()}>
+            <div className="cardhead">
+              <div>
+                <h2>PIN attendance</h2>
+                <p className="muted">Use this only when you prefer PIN instead of face verification.</p>
+              </div>
+              <button className="btn" type="button" onClick={() => setPinOpen(false)}>Close</button>
+            </div>
+            <form className="form" onSubmit={(event) => submit(event, "PIN")}>
+              <div className="field">
+                <label htmlFor="pin-type">Event</label>
+                <select id="pin-type" name="type" defaultValue="CHECK_IN">
+                  <option value="CHECK_IN">Check in</option>
+                  <option value="CHECK_OUT">Check out</option>
+                  <option value="BREAK_START">Break start</option>
+                  <option value="BREAK_END">Break end</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="pin">Attendance PIN</label>
+                <input id="pin" name="pin" type="password" inputMode="numeric" placeholder="••••••" required />
+              </div>
+              <button className="btn primary" type="submit" disabled={loading === "PIN"}>
+                {loading === "PIN" ? "Recording..." : "Record with PIN"}
+              </button>
+            </form>
+          </section>
+        </div>
+      ) : null}
 
-      <div className="notice" style={{ gridColumn: "1 / -1" }}>{status}</div>
-    </div>
+      {toast ? <div className="floating-toast">{toast}</div> : null}
+    </>
   );
 }

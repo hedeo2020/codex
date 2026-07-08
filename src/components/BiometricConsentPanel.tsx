@@ -11,12 +11,19 @@ type Props = {
 export function BiometricConsentPanel({ consentStatus, canEnroll }: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState("");
   const [loading, setLoading] = useState<"consent" | "enroll" | "delete" | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [capturedImage, setCapturedImage] = useState("");
 
+  function showToast(message: string) {
+    setToast(message);
+    window.clearTimeout((showToast as typeof showToast & { timer?: number }).timer);
+    (showToast as typeof showToast & { timer?: number }).timer = window.setTimeout(() => setToast(""), 3000);
+  }
+
   useEffect(() => {
+    void startCamera();
     return () => {
       const stream = videoRef.current?.srcObject as MediaStream | null;
       stream?.getTracks().forEach((track) => track.stop());
@@ -32,7 +39,7 @@ export function BiometricConsentPanel({ consentStatus, canEnroll }: Props) {
     });
     const payload = await response.json().catch(() => ({}));
     setLoading(null);
-    setMessage(response.ok ? "Consent recorded. You can now capture an enrollment image." : payload.error ?? "Unable to record consent.");
+    showToast(response.ok ? "Consent recorded. You can now capture an enrollment image." : payload.error ?? "Unable to record consent.");
     router.refresh();
   }
 
@@ -44,16 +51,16 @@ export function BiometricConsentPanel({ consentStatus, canEnroll }: Props) {
         await videoRef.current.play();
       }
       setCameraReady(true);
-      setMessage("Camera ready. Capture a clear enrollment image.");
+      showToast("Camera is ready for enrollment.");
     } catch {
-      setMessage("Camera access failed. Confirm HTTPS, permissions, and camera availability.");
+      showToast("Camera access failed. Confirm HTTPS, permissions, and camera availability.");
     }
   }
 
   function captureFrame() {
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) {
-      setMessage("The camera is not ready yet.");
+      showToast("The camera is not ready yet.");
       return;
     }
 
@@ -62,18 +69,18 @@ export function BiometricConsentPanel({ consentStatus, canEnroll }: Props) {
     canvas.height = video.videoHeight;
     const context = canvas.getContext("2d");
     if (!context) {
-      setMessage("Unable to capture the enrollment image.");
+      showToast("Unable to capture the enrollment image.");
       return;
     }
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     setCapturedImage(canvas.toDataURL("image/jpeg", 0.92));
-    setMessage("Enrollment image captured.");
+    showToast("Enrollment image captured.");
   }
 
   async function enrollProfile() {
     if (!capturedImage) {
-      setMessage("Capture an enrollment image first.");
+      showToast("Capture an enrollment image first.");
       return;
     }
     setLoading("enroll");
@@ -84,7 +91,7 @@ export function BiometricConsentPanel({ consentStatus, canEnroll }: Props) {
     });
     const payload = await response.json().catch(() => ({}));
     setLoading(null);
-    setMessage(response.ok ? "Enrollment completed. Face attendance is now active." : payload.error ?? "Unable to enroll the biometric profile.");
+    showToast(response.ok ? "Enrollment completed. Face attendance is now active." : payload.error ?? "Unable to enroll the biometric profile.");
     if (response.ok) setCapturedImage("");
     router.refresh();
   }
@@ -100,38 +107,44 @@ export function BiometricConsentPanel({ consentStatus, canEnroll }: Props) {
     });
     const payload = await response.json().catch(() => ({}));
     setLoading(null);
-    setMessage(response.ok ? "Biometric profile deleted. PIN is now your fallback method." : payload.error ?? "Unable to delete biometric profile.");
+    showToast(response.ok ? "Biometric profile deleted. PIN is now your fallback method." : payload.error ?? "Unable to delete biometric profile.");
     router.refresh();
   }
 
   return (
-    <div className="form">
-      <button className="btn primary" onClick={grantConsent} disabled={loading === "consent" || consentStatus}>
-        {loading === "consent" ? "Saving..." : consentStatus ? "Consent already granted" : "Grant biometric consent"}
-      </button>
-      <div className="camera" style={{ marginTop: 8 }}>
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }}
-        />
-        {capturedImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={capturedImage} alt="Enrollment capture" style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : null}
+    <>
+      <div className="form">
+        <div className="camera" style={{ marginTop: 8 }}>
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }}
+          />
+          {capturedImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={capturedImage} alt="Enrollment capture" style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : null}
+        </div>
+        <div className="hero-strip">
+          <div className="metric"><strong>Consent</strong><div className="muted">{consentStatus ? "Granted" : "Not granted yet"}</div></div>
+          <div className="metric"><strong>Camera</strong><div className="muted">{cameraReady ? "Ready" : "Starting..."}</div></div>
+          <div className="metric"><strong>Enrollment</strong><div className="muted">{canEnroll ? "Available" : "Unavailable"}</div></div>
+        </div>
+        <div className="actions">
+          <button className="btn primary" onClick={grantConsent} disabled={loading === "consent" || consentStatus}>
+            {loading === "consent" ? "Saving..." : consentStatus ? "Consent already granted" : "Grant biometric consent"}
+          </button>
+          <button className="btn" onClick={captureFrame} type="button" disabled={!cameraReady}>Capture frame</button>
+        </div>
+        <button className="btn primary" onClick={enrollProfile} disabled={loading === "enroll" || !consentStatus || !canEnroll || !capturedImage}>
+          {loading === "enroll" ? "Enrolling..." : "Enroll face profile"}
+        </button>
+        <button className="btn" onClick={deleteProfile} disabled={loading === "delete"}>
+          {loading === "delete" ? "Deleting..." : "Delete biometric profile"}
+        </button>
       </div>
-      <div className="actions">
-        <button className="btn" onClick={startCamera} type="button">Enable camera</button>
-        <button className="btn" onClick={captureFrame} type="button" disabled={!cameraReady}>Capture frame</button>
-      </div>
-      <button className="btn primary" onClick={enrollProfile} disabled={loading === "enroll" || !consentStatus || !canEnroll || !capturedImage}>
-        {loading === "enroll" ? "Enrolling..." : "Enroll face profile"}
-      </button>
-      <button className="btn" onClick={deleteProfile} disabled={loading === "delete"}>
-        {loading === "delete" ? "Deleting..." : "Delete biometric profile"}
-      </button>
-      {message ? <p className="fine">{message}</p> : null}
-    </div>
+      {toast ? <div className="floating-toast">{toast}</div> : null}
+    </>
   );
 }

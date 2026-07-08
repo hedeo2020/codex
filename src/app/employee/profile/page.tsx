@@ -12,10 +12,15 @@ export default async function ProfilePage() {
     <div className="shell">
       <Sidebar active="My profile" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.jobTitle ?? "Employee"} />
       <main className="main">
-        <Header eyebrow="Profile" title="Your account details" subtitle="Only employee-managed fields can be changed here." />
+        <Header eyebrow="Profile" title="Your account details" subtitle="Keep your photo, contact details, and attendance preference current." />
         <div className="layout2">
-          <section className="card">
-            <h2>Contact preferences</h2>
+          <section className="card glass">
+            <div className="cardhead">
+              <div>
+                <h2>Contact and attendance preferences</h2>
+                <p className="muted">These are the account details you manage yourself.</p>
+              </div>
+            </div>
             <ProfileForm
               personalEmail={user.personalEmail ?? ""}
               mobile={user.mobile ?? ""}
@@ -23,8 +28,8 @@ export default async function ProfilePage() {
               preferredAttendanceMethod={preferredAttendanceMethod}
             />
           </section>
-          <aside className="card">
-            <h2>Managed fields</h2>
+          <aside className="card glass">
+            <h2>Company-managed fields</h2>
             <div className="feed">
               <div className="feedrow"><span className="doticon">ID</span><div><strong>{user.employeeId}</strong><small>Employee identifier</small></div></div>
               <div className="feedrow"><span className="doticon">R</span><div><strong>{user.role.name.replaceAll("_", " ")}</strong><small>Assigned access role</small></div></div>

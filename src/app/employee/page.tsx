@@ -13,11 +13,17 @@ export default async function EmployeeDashboard() {
     take: 4
   });
 
-  const monthlyCount = await db.attendanceRecord.count({
+  const weekStart = new Date();
+  const dayIndex = weekStart.getDay();
+  const mondayOffset = dayIndex === 0 ? 6 : dayIndex - 1;
+  weekStart.setDate(weekStart.getDate() - mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weeklyCount = await db.attendanceRecord.count({
     where: {
       userId: user.id,
       attendanceType: "CHECK_IN",
-      eventTime: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }
+      eventTime: { gte: weekStart }
     }
   });
 
@@ -41,15 +47,16 @@ export default async function EmployeeDashboard() {
             <h2>{lastCheckIn ? `Last check-in at ${formatTime(lastCheckIn.eventTime)}` : "No check-in recorded today yet"}</h2>
             <p style={{ color: "#cce0d7" }}>{user.location?.name ?? "Assigned location"} · {user.preferredAttendanceMethod.replaceAll("_", " ")}</p>
             <div className="actions">
+              <Link className="btn primary" href="/employee/attendance">Check in now</Link>
               <Link className="btn" href="/employee/attendance">Record attendance</Link>
               <Link className="btn soft" href="/employee/history">Open history</Link>
             </div>
           </div>
           <div className="status-ring">
             <span>
-              <strong style={{ fontSize: 18 }}>{monthlyCount}</strong>
+              <strong style={{ fontSize: 18 }}>{weeklyCount}</strong>
               <br />
-              check-ins this month
+              check-ins this week
             </span>
           </div>
         </section>
@@ -78,7 +85,7 @@ export default async function EmployeeDashboard() {
         </div>
 
         <section className="layout2">
-          <div className="card">
+          <div className="card glass">
             <div className="cardhead">
               <div>
                 <h2>Recent attendance</h2>
@@ -92,6 +99,7 @@ export default async function EmployeeDashboard() {
                   <th>Date</th>
                   <th>Event</th>
                   <th>Time</th>
+                  <th>Location</th>
                   <th>Method</th>
                   <th>Status</th>
                 </tr>
@@ -102,6 +110,7 @@ export default async function EmployeeDashboard() {
                     <td>{formatDate(record.eventTime)}</td>
                     <td>{record.attendanceType.replaceAll("_", " ")}</td>
                     <td>{formatTime(record.eventTime)}</td>
+                    <td>{record.captureLocationLabel ?? "Current area"}</td>
                     <td>{record.verificationMethod.replaceAll("_", " ")}</td>
                     <td><span className="badge">{record.verificationStatus.replaceAll("_", " ")}</span></td>
                   </tr>
@@ -110,7 +119,7 @@ export default async function EmployeeDashboard() {
             </table>
           </div>
 
-          <aside className="card">
+          <aside className="card glass">
             <div className="cardhead">
               <div>
                 <h2>Face profile</h2>
@@ -118,10 +127,10 @@ export default async function EmployeeDashboard() {
               </div>
               <span className={`badge ${user.biometricProfile?.consentStatus ? "" : "gray"}`}>{user.biometricProfile?.consentStatus ? "Consent active" : "No consent"}</span>
             </div>
-            <div className="notice">
-              {user.biometricProfile?.expiresAt
-                ? `Biometric profile expires on ${formatDate(user.biometricProfile.expiresAt)}.`
-                : "No biometric expiry is active yet."}
+            <div className="hero-strip">
+              <div className="metric"><strong>Expiry</strong><div className="muted">{user.biometricProfile?.expiresAt ? formatDate(user.biometricProfile.expiresAt) : "No expiry set"}</div></div>
+              <div className="metric"><strong>Face access</strong><div className="muted">{user.biometricProfile?.enrollmentStatus?.replaceAll("_", " ") ?? "Not enrolled"}</div></div>
+              <div className="metric"><strong>Preferred method</strong><div className="muted">{user.preferredAttendanceMethod.replaceAll("_", " ")}</div></div>
             </div>
             <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
               <Link className="btn" href="/employee/biometrics">Manage consent</Link>
