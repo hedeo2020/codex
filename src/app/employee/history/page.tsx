@@ -17,29 +17,21 @@ export default async function HistoryPage() {
       <Sidebar active="My history" userName={`${user.firstName} ${user.lastName}`} userSubtitle={user.jobTitle ?? "Employee"} />
       <main className="main">
         <Header eyebrow="Attendance history" title="Your attendance records" subtitle="Verified events from the live system." />
-        <section className="card">
-          <table>
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Event</th>
-                <th>Method</th>
-                <th>Status</th>
-                <th>Timezone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record) => (
-                <tr key={record.id}>
-                  <td>{formatDateTime(record.eventTime)}</td>
-                  <td>{record.attendanceType.replaceAll("_", " ")}</td>
-                  <td>{record.verificationMethod.replaceAll("_", " ")}</td>
-                  <td><span className="badge">{record.verificationStatus.replaceAll("_", " ")}</span></td>
-                  <td>{record.timezone}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <section className="card glass">
+          <div className="record-grid">
+            {records.map((record) => (
+              <article className="record-card" key={record.id}>
+                {record.captureImageUrl ? <img src={record.captureImageUrl} alt={record.attendanceType} className="record-photo" /> : <div className="photo-placeholder">No image stored</div>}
+                <div className="feed">
+                  <div><strong>{record.attendanceType.replaceAll("_", " ")}</strong></div>
+                  <small>{formatDateTime(record.eventTime)}</small>
+                  <small>{record.captureLocationLabel ?? "Location unavailable"}</small>
+                  <small>{record.latitude && record.longitude ? `${record.latitude.toString()}, ${record.longitude.toString()}` : "Coordinates unavailable"}</small>
+                  <div><span className="badge">{record.verificationMethod.replaceAll("_", " ")}</span> <span className="badge gray">{record.verificationStatus.replaceAll("_", " ")}</span></div>
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
       </main>
     </div>

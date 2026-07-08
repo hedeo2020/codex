@@ -191,6 +191,10 @@ model AttendanceRecord {
   confidenceScore Decimal? @map("confidence_score")
   locationId String? @map("location_id")
   location Location? @relation(fields: [locationId], references: [id])
+  captureLocationLabel String? @map("capture_location_label")
+  latitude Decimal?
+  longitude Decimal?
+  captureImageUrl String? @map("capture_image_url")
   deviceId String? @map("device_id")
   ipAddress String? @map("ip_address")
   notes String?

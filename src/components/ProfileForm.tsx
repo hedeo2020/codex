@@ -1,16 +1,19 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { useState } from "react";
 
 type Props = {
   personalEmail: string;
   mobile: string;
+  profilePhotoUrl: string;
   preferredAttendanceMethod: "FACE" | "PIN" | "ADMIN_ASSISTED";
 };
 
-export function ProfileForm({ personalEmail, mobile, preferredAttendanceMethod }: Props) {
+export function ProfileForm({ personalEmail, mobile, profilePhotoUrl, preferredAttendanceMethod }: Props) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [photo, setPhoto] = useState(profilePhotoUrl);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,6 +27,7 @@ export function ProfileForm({ personalEmail, mobile, preferredAttendanceMethod }
       body: JSON.stringify({
         personalEmail: String(form.get("personalEmail") || "") || null,
         mobile: String(form.get("mobile") || "") || null,
+        profilePhotoUrl: String(form.get("profilePhotoUrl") || "") || null,
         preferredAttendanceMethod: String(form.get("preferredAttendanceMethod"))
       })
     });
@@ -33,8 +37,26 @@ export function ProfileForm({ personalEmail, mobile, preferredAttendanceMethod }
     setMessage(response.ok ? "Profile updated." : payload.error ?? "Unable to update profile.");
   }
 
+  function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhoto(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <form className="form" onSubmit={handleSubmit}>
+      <div className="photo-uploader">
+        {photo ? <img src={photo} alt="Profile" className="profile-photo" /> : <div className="avatar jumbo">ME</div>}
+        <div className="field">
+          <label htmlFor="profilePhoto">Profile picture</label>
+          <input id="profilePhoto" type="file" accept="image/*" onChange={handleFile} />
+          <input type="hidden" name="profilePhotoUrl" value={photo} />
+        </div>
+      </div>
       <div className="field">
         <label htmlFor="personalEmail">Personal email</label>
         <input id="personalEmail" name="personalEmail" type="email" defaultValue={personalEmail} />

@@ -12,6 +12,9 @@ const input = z.object({
   type: z.enum(["CHECK_IN", "CHECK_OUT", "BREAK_START", "BREAK_END"]),
   method: z.enum(["FACE", "PIN"]),
   timezone: z.string().min(1),
+  captureLocationLabel: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   pin: z.string().min(4).max(12).optional(),
   captureToken: z.string().min(6).optional(),
   imageDataUrl: z.string().min(20).optional()
@@ -32,6 +35,10 @@ export async function GET() {
       attendanceType: true,
       eventTime: true,
       timezone: true,
+      captureLocationLabel: true,
+      latitude: true,
+      longitude: true,
+      captureImageUrl: true,
       verificationMethod: true,
       verificationStatus: true,
       confidenceScore: true,
@@ -107,7 +114,11 @@ export async function POST(req: NextRequest) {
       method: parsed.data.method,
       timezone: parsed.data.timezone,
       confidence,
-      ipAddress: clientIp(req)
+      ipAddress: clientIp(req),
+      captureLocationLabel: parsed.data.captureLocationLabel,
+      latitude: parsed.data.latitude,
+      longitude: parsed.data.longitude,
+      captureImageUrl: parsed.data.imageDataUrl
     });
 
     return NextResponse.json({ record }, { status: 201 });

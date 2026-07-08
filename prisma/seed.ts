@@ -50,18 +50,23 @@ async function main() {
   );
 
   const location = await db.location.upsert({
-    where: { name: "Singapore HQ" },
-    update: {},
+    where: { name: "Manila HQ" },
+    update: {
+      address: "Makati Avenue, Makati City, Metro Manila, Philippines",
+      timezone: "Asia/Manila"
+    },
     create: {
-      name: "Singapore HQ",
-      address: "1 Raffles Place, Singapore",
-      timezone: "Asia/Singapore"
+      name: "Manila HQ",
+      address: "Makati Avenue, Makati City, Metro Manila, Philippines",
+      timezone: "Asia/Manila"
     }
   });
 
   const shift = await db.shift.upsert({
     where: { name: "Standard Day" },
-    update: {},
+    update: {
+      locationId: location.id
+    },
     create: {
       name: "Standard Day",
       startTime: "09:00",
@@ -156,10 +161,11 @@ async function main() {
             userId: user.id,
             attendanceType: AttendanceType.CHECK_IN,
             eventTime: seededAttendanceTime(daysAgo),
-            timezone: "Asia/Singapore",
+            timezone: "Asia/Manila",
             verificationMethod: daysAgo % 2 ? VerificationMethod.FACE : VerificationMethod.PIN,
             verificationStatus: VerificationStatus.SUCCESS,
             createdBy: user.id,
+            captureLocationLabel: "Manila HQ",
             notes: "seeded-attendance"
           }
         });

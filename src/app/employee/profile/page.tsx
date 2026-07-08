@@ -19,6 +19,7 @@ export default async function ProfilePage() {
             <ProfileForm
               personalEmail={user.personalEmail ?? ""}
               mobile={user.mobile ?? ""}
+              profilePhotoUrl={user.profilePhotoUrl ?? ""}
               preferredAttendanceMethod={preferredAttendanceMethod}
             />
           </section>

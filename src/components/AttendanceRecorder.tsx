@@ -13,6 +13,8 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
   const [loading, setLoading] = useState<"PIN" | "FACE" | null>(null);
   const [cameraState, setCameraState] = useState<"idle" | "ready" | "error">("idle");
   const [capturedImage, setCapturedImage] = useState<string>("");
+  const [locationLabel, setLocationLabel] = useState("Location pending");
+  const [coordinates, setCoordinates] = useState<{ latitude?: number; longitude?: number }>({});
 
   useEffect(() => {
     return () => {
@@ -39,6 +41,24 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     }
   }
 
+  function fetchLocation() {
+    if (!navigator.geolocation) {
+      setLocationLabel("Location not supported on this device");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = Number(position.coords.latitude.toFixed(6));
+        const longitude = Number(position.coords.longitude.toFixed(6));
+        setCoordinates({ latitude, longitude });
+        setLocationLabel(`Lat ${latitude}, Lng ${longitude}`);
+      },
+      () => setLocationLabel("Location permission denied"),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
   function captureFrame() {
     const video = videoRef.current;
     if (!video || !video.videoWidth || !video.videoHeight) {
@@ -56,6 +76,20 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
     }
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.fillStyle = "rgba(12, 20, 18, 0.72)";
+    context.fillRect(0, canvas.height - 90, canvas.width, 90);
+    context.fillStyle = "#ffffff";
+    context.font = "bold 24px Inter, sans-serif";
+    context.fillText("Clockwise Attendance", 22, canvas.height - 50);
+    context.font = "18px Inter, sans-serif";
+    context.fillText(
+      new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "medium", timeZone: "Asia/Manila" }).format(new Date()),
+      22,
+      canvas.height - 22
+    );
+    context.textAlign = "right";
+    context.fillText(locationLabel, canvas.width - 22, canvas.height - 22);
+    context.textAlign = "left";
     setCapturedImage(canvas.toDataURL("image/jpeg", 0.92));
     setStatus("Frame captured. Submit to verify attendance.");
   }
@@ -71,7 +105,10 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
       body: JSON.stringify({
         type: String(form.get("type")),
         method,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone: "Asia/Manila",
+        captureLocationLabel: locationLabel,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
         pin: form.get("pin") ? String(form.get("pin")) : undefined,
         imageDataUrl: method === "FACE" ? capturedImage || undefined : undefined
       })
@@ -125,10 +162,14 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
           <button className="btn" type="button" onClick={startCamera}>
             {cameraState === "ready" ? "Camera on" : "Enable camera"}
           </button>
+          <button className="btn" type="button" onClick={fetchLocation}>
+            Use current location
+          </button>
           <button className="btn" type="button" onClick={captureFrame} disabled={cameraState !== "ready"}>
             Capture frame
           </button>
         </div>
+        <p className="fine">Timezone fixed to Asia/Manila. Current location: {locationLabel}.</p>
         <form className="form" onSubmit={(event) => submit(event, "FACE")}>
           <div className="field">
             <label htmlFor="face-type">Event</label>
@@ -143,7 +184,7 @@ export function AttendanceRecorder({ biometricReady, biometricProvider }: Props)
             {loading === "FACE" ? "Verifying..." : "Verify & record"}
           </button>
         </form>
-        <p className="fine">For phone use, open the site over HTTPS and allow camera access when your browser asks.</p>
+        <p className="fine">For phone use, open the site over HTTPS and allow both camera and location access when your browser asks.</p>
       </section>
 
       <aside className="card">

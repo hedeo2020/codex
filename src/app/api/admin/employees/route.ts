@@ -9,23 +9,44 @@ import { requireRole } from "@/lib/session";
 export async function GET() {
   try {
     await requireRole("SUPER_ADMIN", "HR_ADMIN");
-    const employees = await db.user.findMany({
-      where: { deletedAt: null },
-      select: {
-        id: true,
-        employeeId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        employmentStatus: true,
-        jobTitle: true,
-        department: { select: { name: true } },
-        role: { select: { name: true } },
-        biometricProfile: { select: { enrollmentStatus: true, consentStatus: true, expiresAt: true } }
-      },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }]
-    });
-    return NextResponse.json({ employees });
+    const [employees, roles, departments, shifts, locations] = await Promise.all([
+      db.user.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          employeeId: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          personalEmail: true,
+          mobile: true,
+          profilePhotoUrl: true,
+          employmentStatus: true,
+          jobTitle: true,
+          roleId: true,
+          departmentId: true,
+          shiftId: true,
+          locationId: true,
+          preferredAttendanceMethod: true,
+          department: { select: { name: true } },
+          shift: { select: { name: true } },
+          location: { select: { name: true, timezone: true, address: true } },
+          role: { select: { name: true } },
+          biometricProfile: { select: { enrollmentStatus: true, consentStatus: true, expiresAt: true } },
+          attendanceRecords: {
+            select: { id: true, eventTime: true, attendanceType: true, captureImageUrl: true, captureLocationLabel: true },
+            orderBy: { eventTime: "desc" },
+            take: 6
+          }
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }]
+      }),
+      db.role.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      db.department.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      db.shift.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      db.location.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })
+    ]);
+    return NextResponse.json({ employees, roles, departments, shifts, locations });
   } catch {
     return NextResponse.json({ error: "You do not have permission to perform this action." }, { status: 403 });
   }

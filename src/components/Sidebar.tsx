@@ -12,6 +12,7 @@ const admin = [
   ["Dashboard", "/admin"],
   ["Employees", "/admin/employees"],
   ["Attendance", "/admin/attendance"],
+  ["Payroll", "/admin/payroll"],
   ["Enrollments", "/admin/enrollments"],
   ["Reports", "/admin/reports"],
   ["Audit logs", "/admin/audit"],
