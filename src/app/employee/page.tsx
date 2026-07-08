@@ -7,8 +7,14 @@ import { formatDate, formatTime } from "@/lib/format";
 
 export default async function EmployeeDashboard() {
   const { user } = await requireEmployeeUser();
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const manilaHour = Number(
+    new Intl.DateTimeFormat("en-PH", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Asia/Manila"
+    }).format(new Date())
+  );
+  const greeting = manilaHour < 12 ? "morning" : manilaHour < 18 ? "afternoon" : "evening";
 
   const recentRecords = await db.attendanceRecord.findMany({
     where: { userId: user.id },
@@ -50,16 +56,14 @@ export default async function EmployeeDashboard() {
             <h2>{lastCheckIn ? `Last check-in at ${formatTime(lastCheckIn.eventTime)}` : "No check-in recorded today yet"}</h2>
             <p style={{ color: "#cce0d7" }}>{user.location?.name ?? "Assigned location"} · {user.preferredAttendanceMethod.replaceAll("_", " ")}</p>
             <div className="actions">
-              <Link className="btn primary" href="/employee/attendance">Check in now</Link>
-              <Link className="btn soft" href="/employee/attendance">Record attendance</Link>
-              <Link className="btn soft" href="/employee/history">Open history</Link>
+              <Link className="btn primary" href="/employee/attendance">CHECK IN NOW</Link>
             </div>
           </div>
           <div className="status-ring">
             <span>
               <strong style={{ fontSize: 18 }}>{weeklyCount}</strong>
               <br />
-              check-ins this week
+              CHECK-INS THIS WEEK
             </span>
           </div>
         </section>

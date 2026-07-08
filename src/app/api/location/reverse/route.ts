@@ -30,15 +30,22 @@ export async function GET(req: NextRequest) {
       address?: Record<string, string | undefined>;
     };
     const address = payload.address ?? {};
-    const locationLabel =
-      address.road ||
-      address.neighbourhood ||
+    const barangay =
       address.suburb ||
-      address.village ||
-      address.town ||
+      address.neighbourhood ||
+      address.quarter ||
+      address.hamlet ||
+      address.city_district ||
+      "Barangay unavailable";
+    const cityMunicipality =
       address.city ||
-      payload.name ||
-      "Current area";
+      address.town ||
+      address.village ||
+      address.municipality ||
+      "City/Municipality unavailable";
+    const province = address.state || address.province || "Province unavailable";
+    const country = address.country || "Country unavailable";
+    const locationLabel = `${barangay},${cityMunicipality},${province},${country}`;
 
     return NextResponse.json({ locationLabel });
   } catch {
