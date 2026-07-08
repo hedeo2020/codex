@@ -1,4 +1,4 @@
-type BiometricProvider = "disabled" | "mock" | "webhook" | "compreface" | "azure-face";
+type BiometricProvider = "disabled" | "mock" | "webhook" | "compreface" | "azure-face" | "local-face";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -16,10 +16,10 @@ function numberWithDefault(name: string, fallback: number) {
 
 function provider(): BiometricProvider {
   const raw = (process.env.BIOMETRIC_PROVIDER ?? "disabled").trim().toLowerCase();
-  if (raw === "disabled" || raw === "mock" || raw === "webhook" || raw === "compreface" || raw === "azure-face") {
+  if (raw === "disabled" || raw === "mock" || raw === "webhook" || raw === "compreface" || raw === "azure-face" || raw === "local-face") {
     return raw;
   }
-  throw new Error("BIOMETRIC_PROVIDER must be one of disabled, mock, webhook, compreface, or azure-face.");
+  throw new Error("BIOMETRIC_PROVIDER must be one of disabled, mock, webhook, compreface, azure-face, or local-face.");
 }
 
 export const appEnv = {
@@ -56,6 +56,9 @@ export const appEnv = {
   get azureFacePersonGroupId() {
     return process.env.AZURE_FACE_PERSON_GROUP_ID?.trim() ?? "attendance-employees";
   },
+  get faceRecognitionPythonBin() {
+    return process.env.FACE_RECOGNITION_PYTHON_BIN?.trim() || "python3";
+  },
   get verificationThreshold() {
     return numberWithDefault("VERIFICATION_THRESHOLD", 0.82);
   },
@@ -79,11 +82,8 @@ export const appEnv = {
 export function biometricProviderReady() {
   if (appEnv.biometricProvider === "disabled") return false;
   if (appEnv.biometricProvider === "mock") return process.env.NODE_ENV !== "production";
-  if (appEnv.biometricProvider === "webhook") {
-    return Boolean(appEnv.biometricWebhookUrl && appEnv.biometricWebhookToken);
-  }
-  if (appEnv.biometricProvider === "compreface") {
-    return Boolean(appEnv.comprefaceBaseUrl && appEnv.comprefaceApiKey);
-  }
-  return Boolean(appEnv.azureFaceEndpoint && appEnv.azureFaceKey && appEnv.azureFacePersonGroupId);
+  if (appEnv.biometricProvider === "webhook") return Boolean(appEnv.biometricWebhookUrl && appEnv.biometricWebhookToken);
+  if (appEnv.biometricProvider === "compreface") return Boolean(appEnv.comprefaceBaseUrl && appEnv.comprefaceApiKey);
+  if (appEnv.biometricProvider === "azure-face") return Boolean(appEnv.azureFaceEndpoint && appEnv.azureFaceKey && appEnv.azureFacePersonGroupId);
+  return true;
 }

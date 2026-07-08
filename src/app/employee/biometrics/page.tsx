@@ -37,7 +37,7 @@ export default async function BiometricsPage() {
             <p className="muted">Grant consent, capture a camera frame, and enroll directly when the active biometric provider supports in-app enrollment.</p>
             <BiometricConsentPanel
               consentStatus={Boolean(profile?.consentStatus)}
-              canEnroll={(appEnv.biometricProvider === "compreface" || appEnv.biometricProvider === "azure-face") && biometricProviderReady()}
+              canEnroll={appEnv.biometricProvider === "local-face" && biometricProviderReady()}
             />
           </aside>
         </div>

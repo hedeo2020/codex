@@ -6,7 +6,7 @@ A privacy-first attendance application based on the supplied 17-page specificati
 
 This application verifies a known, consenting employee who has initiated an attendance event. It must never identify unknown people or be used for hiring, firing, ranking, discipline, performance scoring, or automated employment decisions. Facial attendance is optional. PIN and administrator-assisted attendance remain available.
 
-PIN attendance is ready for production use. Face attendance now captures from standard phone and laptop browsers and supports in-app enrollment with Azure Face or CompreFace, while keeping the match decision on the server. Do not send stored embeddings to the browser or let the browser declare a match result.
+PIN attendance is ready for production use. Face attendance can now run fully self-hosted with a local `face_recognition` backend on ARM-friendly Linux servers, keeping encrypted face embeddings in your own database and the match decision on the server. Do not send stored embeddings to the browser or let the browser declare a match result.
 
 ## Local setup
 
