@@ -7,6 +7,9 @@ import { formatDate, formatTime } from "@/lib/format";
 
 export default async function EmployeeDashboard() {
   const { user } = await requireEmployeeUser();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+
   const recentRecords = await db.attendanceRecord.findMany({
     where: { userId: user.id },
     orderBy: { eventTime: "desc" },
@@ -36,7 +39,7 @@ export default async function EmployeeDashboard() {
       <main className="main">
         <Header
           eyebrow={formatDate(new Date())}
-          title={`Good ${new Date().getHours() < 12 ? "morning" : "afternoon"}, ${user.firstName}.`}
+          title={`Good ${greeting}, ${user.firstName}.`}
           subtitle="Here’s your live attendance snapshot."
           status={user.preferredAttendanceMethod.replaceAll("_", " ")}
         />
@@ -48,7 +51,7 @@ export default async function EmployeeDashboard() {
             <p style={{ color: "#cce0d7" }}>{user.location?.name ?? "Assigned location"} · {user.preferredAttendanceMethod.replaceAll("_", " ")}</p>
             <div className="actions">
               <Link className="btn primary" href="/employee/attendance">Check in now</Link>
-              <Link className="btn" href="/employee/attendance">Record attendance</Link>
+              <Link className="btn soft" href="/employee/attendance">Record attendance</Link>
               <Link className="btn soft" href="/employee/history">Open history</Link>
             </div>
           </div>
