@@ -1,7 +1,7 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 RUN corepack enable
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv python3-pip build-essential cmake libopenblas-dev liblapack-dev libjpeg-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-dev python3-venv python3-pip build-essential cmake pkg-config libopenblas-dev liblapack-dev libjpeg-dev && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
